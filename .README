@@ -1,0 +1,1535 @@
+# FaultLens 🔎
+
+### Production Failure Investigation & Reliability Platform
+
+FaultLens is a full-stack engineering platform designed to help developers and SRE teams investigate production failures by connecting **incidents, logs, metrics, traces, deployments, service dependencies, code changes, and historical failures** into a single investigation workflow.
+
+Instead of simply telling an engineer that a service is failing, FaultLens attempts to answer:
+
+> **What failed → Why did it fail → What changed → What was affected → How can we reproduce it → Did the fix actually work → Have we seen this failure before?**
+
+The platform combines traditional observability and incident-management concepts with an evidence-driven investigation engine and optional AI assistance.
+
+---
+
+# 1. The Problem
+
+Modern production systems generate enormous amounts of operational data:
+
+* Logs
+* Metrics
+* Distributed traces
+* Deployment events
+* Git commits
+* Service dependencies
+* Error reports
+* Infrastructure events
+* Incident reports
+
+The difficult part is not collecting the data.
+
+The difficult part is **connecting the evidence**.
+
+When an incident occurs, engineers often have to manually jump between:
+
+```text
+Monitoring Dashboard
+       ↓
+Logs
+       ↓
+Tracing System
+       ↓
+GitHub
+       ↓
+Deployment History
+       ↓
+Database
+       ↓
+Incident Channel
+       ↓
+Previous Incidents
+```
+
+This creates slow and fragmented investigations.
+
+FaultLens attempts to provide a unified investigation workflow:
+
+```text
+                    ┌──────────────┐
+                    │   INCIDENT   │
+                    └──────┬───────┘
+                           ↓
+                  ┌─────────────────┐
+                  │ Detect Failure  │
+                  └────────┬────────┘
+                           ↓
+                  ┌─────────────────┐
+                  │ Collect Evidence│
+                  └────────┬────────┘
+                           ↓
+                  ┌─────────────────┐
+                  │ Failure Graph   │
+                  └────────┬────────┘
+                           ↓
+                  ┌─────────────────┐
+                  │ Find What       │
+                  │ Changed         │
+                  └────────┬────────┘
+                           ↓
+                  ┌─────────────────┐
+                  │ Generate        │
+                  │ Hypotheses      │
+                  └────────┬────────┘
+                           ↓
+                  ┌─────────────────┐
+                  │ Reproduce       │
+                  │ Failure         │
+                  └────────┬────────┘
+                           ↓
+                  ┌─────────────────┐
+                  │ Validate Fix    │
+                  └────────┬────────┘
+                           ↓
+                  ┌─────────────────┐
+                  │ Learn & Remember│
+                  └─────────────────┘
+```
+
+---
+
+# 2. Core Philosophy
+
+FaultLens follows a simple principle:
+
+> **AI should assist engineering investigation, not replace engineering evidence.**
+
+The platform must remain useful even when no external AI API is available.
+
+Therefore:
+
+### Core system
+
+Works using deterministic algorithms, telemetry, database queries, dependency analysis and rule-based investigation.
+
+### AI layer
+
+Provides optional capabilities such as:
+
+* Hypothesis generation
+* Log summarization
+* Incident explanation
+* Similar incident discovery
+* Postmortem generation
+* Natural-language investigation
+
+This makes FaultLens usable without requiring paid AI APIs.
+
+---
+
+# 3. Architecture
+
+FaultLens starts as a **modular monolith with asynchronous workers** rather than immediately becoming a microservice system.
+
+```text
+                         ┌─────────────────────┐
+                         │      Browser        │
+                         │     Next.js Web     │
+                         └──────────┬──────────┘
+                                    │
+                              HTTP / WebSocket
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │     NestJS API      │
+                         │                     │
+                         │ ┌─────────────────┐ │
+                         │ │ Auth / RBAC      │ │
+                         │ │ Incidents        │ │
+                         │ │ Telemetry        │ │
+                         │ │ Investigation    │ │
+                         │ │ Services         │ │
+                         │ │ Experiments      │ │
+                         │ │ AI               │ │
+                         │ └─────────────────┘ │
+                         └──────┬──────┬───────┘
+                                │      │
+                     ┌──────────┘      └──────────┐
+                     ▼                            ▼
+             ┌──────────────┐              ┌──────────────┐
+             │ PostgreSQL   │              │    Redis     │
+             │              │              │              │
+             │ Persistent   │              │ Cache / Queue│
+             │ Data         │              │ Pub/Sub      │
+             └──────────────┘              └──────┬───────┘
+                                                   │
+                                                   ▼
+                                         ┌─────────────────┐
+                                         │ Worker          │
+                                         │                 │
+                                         │ Async jobs      │
+                                         │ Correlation     │
+                                         │ Analysis        │
+                                         │ Similarity      │
+                                         │ Processing      │
+                                         └─────────────────┘
+                                                   │
+                                                   ▼
+                                         ┌─────────────────┐
+                                         │ Investigation   │
+                                         │ Engine          │
+                                         └─────────────────┘
+                                                   │
+                                      ┌────────────┴────────────┐
+                                      ▼                         ▼
+                              ┌──────────────┐          ┌──────────────┐
+                              │ Rule Engine  │          │ Optional AI  │
+                              │              │          │ Layer        │
+                              └──────────────┘          └──────────────┘
+```
+
+---
+
+# 4. Why This Architecture?
+
+## Why Next.js?
+
+Next.js provides:
+
+* React-based frontend
+* Server-side capabilities
+* Routing
+* TypeScript support
+* Production-ready frontend architecture
+
+It will power the FaultLens dashboard and investigation interface.
+
+---
+
+## Why NestJS?
+
+NestJS provides a structured backend architecture based around:
+
+* Modules
+* Controllers
+* Services
+* Dependency injection
+* Guards
+* Interceptors
+* WebSockets
+
+This is particularly useful for a project containing multiple domains such as:
+
+```text
+Auth
+Incidents
+Services
+Telemetry
+Investigations
+Experiments
+Knowledge
+AI
+```
+
+The architecture also makes the project easier to evolve as the codebase grows.
+
+---
+
+## Why PostgreSQL?
+
+PostgreSQL is the primary source of truth.
+
+It stores structured entities such as:
+
+```text
+Users
+Organizations
+Projects
+Services
+Incidents
+Events
+Logs
+Metrics
+Traces
+Deployments
+Commits
+Hypotheses
+Experiments
+Investigations
+Postmortems
+Knowledge
+```
+
+Relational consistency is important because these entities have strong relationships.
+
+---
+
+## Why Redis?
+
+Redis is used for high-speed temporary and asynchronous workloads.
+
+Potential uses:
+
+* Job queues
+* Caching
+* Rate limiting
+* Pub/Sub
+* Real-time event distribution
+* Temporary investigation state
+
+---
+
+## Why BullMQ?
+
+Some operations should not block an HTTP request.
+
+For example:
+
+```text
+Incident created
+       ↓
+API responds immediately
+       ↓
+Background worker
+       ↓
+Collect evidence
+       ↓
+Correlate events
+       ↓
+Build failure graph
+       ↓
+Generate hypotheses
+```
+
+BullMQ provides the asynchronous job-processing layer using Redis.
+
+---
+
+## Why WebSockets?
+
+Production investigations are event-driven.
+
+Instead of repeatedly refreshing the browser:
+
+```text
+Browser → API → "Anything new?"
+Browser → API → "Anything new?"
+Browser → API → "Anything new?"
+```
+
+FaultLens can push updates:
+
+```text
+Incident Created
+      ↓
+Evidence Found
+      ↓
+New Hypothesis
+      ↓
+Service Impact Detected
+      ↓
+Experiment Completed
+```
+
+directly to the investigation interface.
+
+---
+
+# 5. Monorepo Structure
+
+```text
+FaultLens/
+│
+├── apps/
+│   │
+│   ├── web/
+│   │   └── Next.js frontend
+│   │
+│   ├── api/
+│   │   └── NestJS backend
+│   │
+│   └── worker/
+│       └── Background job processor
+│
+├── packages/
+│   │
+│   ├── database/
+│   │   └── Prisma schema and database access
+│   │
+│   ├── types/
+│   │   └── Shared TypeScript types
+│   │
+│   ├── config/
+│   │   └── Shared configuration
+│   │
+│   └── ui/
+│       └── Shared UI components
+│
+├── infrastructure/
+│   ├── docker/
+│   └── deployment configuration
+│
+├── docs/
+│   ├── architecture/
+│   ├── api/
+│   ├── database/
+│   └── decisions/
+│
+├── tests/
+│   ├── integration/
+│   └── e2e/
+│
+├── docker-compose.yml
+├── package.json
+└── pnpm-workspace.yaml
+```
+
+The monorepo allows the frontend, backend, worker and shared packages to evolve together while keeping clear boundaries.
+
+---
+
+# 6. Core Investigation Workflow
+
+The central FaultLens workflow is:
+
+```text
+DETECT
+   ↓
+EXPLAIN
+   ↓
+REPRODUCE
+   ↓
+VALIDATE
+   ↓
+REMEMBER
+```
+
+---
+
+## 6.1 Detect
+
+FaultLens receives or generates signals indicating that something is wrong.
+
+Examples:
+
+```text
+HTTP 500 rate increased
+Latency increased
+Database errors increased
+Service unavailable
+Memory usage exceeded threshold
+Deployment occurred
+Container restarted
+```
+
+An incident is created.
+
+---
+
+# 7. Incident Management
+
+Users can:
+
+* Create incidents
+* Assign severity
+* Assign owners
+* Track status
+* Add notes
+* Add evidence
+* Track investigation progress
+* Add hypotheses
+* Record resolution
+* Generate postmortems
+
+Example lifecycle:
+
+```text
+DETECTED
+   ↓
+INVESTIGATING
+   ↓
+MITIGATING
+   ↓
+RESOLVED
+   ↓
+POSTMORTEM
+```
+
+---
+
+# 8. Telemetry System
+
+FaultLens will support simulated or ingested telemetry.
+
+### Logs
+
+```text
+timestamp
+service
+level
+message
+request_id
+trace_id
+metadata
+```
+
+### Metrics
+
+```text
+timestamp
+service
+metric_name
+value
+labels
+```
+
+### Traces
+
+```text
+trace_id
+span_id
+service
+operation
+duration
+status
+parent_span
+```
+
+### Events
+
+```text
+deployment
+restart
+configuration_change
+feature_flag_change
+database_migration
+```
+
+The initial implementation can use synthetic telemetry generated by the FaultLens simulator.
+
+---
+
+# 9. Failure Graph
+
+The Failure Graph is one of the project's signature features.
+
+It represents relationships between:
+
+```text
+Incident
+   ↓
+Service
+   ↓
+Database
+   ↓
+Deployment
+   ↓
+Commit
+   ↓
+Error
+   ↓
+Dependent Services
+```
+
+Example:
+
+```text
+Payment API
+     │
+     ├──── PostgreSQL
+     │
+     ├──── Redis
+     │
+     └──── Payment Worker
+                │
+                └──── External Payment API
+```
+
+When an incident occurs, FaultLens can highlight potentially affected components.
+
+This enables **blast-radius analysis**.
+
+---
+
+# 10. "What Changed?" Engine
+
+One of the most important investigation capabilities.
+
+When an incident starts at:
+
+```text
+14:32
+```
+
+FaultLens examines recent events:
+
+```text
+14:05  Deployment
+14:11  Configuration change
+14:18  Database migration
+14:25  Feature flag changed
+14:32  Error rate increases
+```
+
+The system correlates temporal proximity between changes and failures.
+
+Possible output:
+
+```text
+Potential Change
+
+Deployment #8421
+
+Occurred: 7 minutes before incident
+
+Affected Service:
+payment-api
+
+Changed:
+Database connection pool configuration
+
+Correlation:
+HIGH
+```
+
+This does not automatically declare the deployment as the root cause.
+
+It becomes **evidence for investigation**.
+
+---
+
+# 11. Evidence-Based Hypotheses
+
+FaultLens should avoid producing unexplained AI guesses.
+
+Instead, an investigation contains explicit hypotheses.
+
+Example:
+
+```text
+Hypothesis #1
+
+Database connection pool exhaustion
+
+Confidence: 82%
+
+Evidence:
+✓ Connection errors increased
+✓ Pool utilization reached 100%
+✓ Deployment changed pool configuration
+✓ Failure started 7 minutes after deployment
+```
+
+Users can:
+
+* Accept
+* Reject
+* Modify
+* Add evidence
+* Compare hypotheses
+
+---
+
+# 12. Competing Hypotheses
+
+Real debugging rarely has one obvious explanation.
+
+FaultLens therefore supports multiple hypotheses:
+
+```text
+Incident
+│
+├── H1: Database connection exhaustion
+│
+├── H2: Redis timeout
+│
+├── H3: Bad deployment
+│
+└── H4: External API degradation
+```
+
+Each hypothesis contains:
+
+* Evidence
+* Counter-evidence
+* Confidence
+* Related telemetry
+* Related services
+* Investigation status
+
+This creates a more realistic engineering investigation process.
+
+---
+
+# 13. Blast Radius
+
+When a service fails, FaultLens determines what could be affected.
+
+Example:
+
+```text
+Payment Service
+      │
+      ├── Checkout
+      ├── Order Service
+      ├── Notification Service
+      └── Analytics
+```
+
+The platform can calculate:
+
+```text
+Affected Services: 4
+
+Critical:
+Checkout
+
+Potentially affected:
+Orders
+Notifications
+Analytics
+```
+
+This helps engineers prioritize mitigation.
+
+---
+
+# 14. Failure Reproduction
+
+A major differentiating feature is controlled failure reproduction.
+
+FaultLens provides simulated environments where engineers can reproduce failures.
+
+Example:
+
+```text
+Normal System
+      ↓
+Inject Database Latency
+      ↓
+Observe Failure
+      ↓
+Capture Telemetry
+      ↓
+Compare With Production Incident
+```
+
+Possible experiments:
+
+* Database latency
+* Database unavailable
+* Redis unavailable
+* CPU pressure
+* Memory pressure
+* Network latency
+* HTTP 500 responses
+* Dependency timeout
+* Bad configuration
+* Deployment regression
+
+The simulator is intentionally controlled and isolated.
+
+---
+
+# 15. Chaos Experiments
+
+FaultLens can provide a controlled chaos-testing layer.
+
+Example:
+
+```text
+Experiment:
+"Redis Timeout"
+
+Target:
+checkout-service
+
+Duration:
+30 seconds
+
+Expected:
+Checkout latency increases
+
+Observed:
+Checkout timeout rate increased to 18%
+```
+
+Every experiment records:
+
+```text
+Experiment
+   ↓
+Configuration
+   ↓
+Execution
+   ↓
+Telemetry
+   ↓
+Result
+   ↓
+Conclusion
+```
+
+---
+
+# 16. Fix Validation
+
+A common problem with incident management is stopping after applying a fix.
+
+FaultLens explicitly validates the fix.
+
+Example:
+
+```text
+Before Fix
+
+Error Rate: 18%
+Latency: 2.4s
+DB Connections: 100%
+
+        ↓
+
+Apply Fix
+
+        ↓
+
+Validation Experiment
+
+        ↓
+
+After Fix
+
+Error Rate: 0.4%
+Latency: 220ms
+DB Connections: 42%
+```
+
+The system can compare:
+
+```text
+Before
+vs
+After
+```
+
+and determine whether the observed behavior improved.
+
+---
+
+# 17. Historical Incident Similarity
+
+After resolving an incident, the investigation should become reusable knowledge.
+
+Future incidents can be compared against historical incidents using characteristics such as:
+
+```text
+Error patterns
+Services
+Metrics
+Failure signatures
+Deployment changes
+Root causes
+Resolution
+```
+
+Example:
+
+```text
+Current Incident
+
+Similarity:
+
+92% → Incident #143
+78% → Incident #091
+61% → Incident #057
+```
+
+This enables engineers to reuse previous knowledge instead of starting from zero.
+
+---
+
+# 18. Engineering Knowledge Graph
+
+Resolved incidents become structured engineering knowledge.
+
+```text
+Incident
+   ↓
+Root Cause
+   ↓
+Service
+   ↓
+Failure Pattern
+   ↓
+Fix
+   ↓
+Validation
+```
+
+Over time FaultLens builds an internal reliability knowledge base.
+
+Example:
+
+```text
+payment-api
+    │
+    ├── connection pool exhaustion
+    │       │
+    │       ├── configuration regression
+    │       └── mitigation: increase pool size
+    │
+    └── Redis timeout
+            │
+            └── mitigation: retry/backoff
+```
+
+---
+
+# 19. Optional AI Layer
+
+AI is an enhancement rather than a dependency.
+
+Potential AI capabilities:
+
+### Incident summarization
+
+Turn hundreds of logs/events into:
+
+```text
+Payment API began returning 500 responses
+approximately 7 minutes after deployment #8421.
+
+The failure correlates with increased database
+connection utilization.
+```
+
+### Hypothesis generation
+
+AI can propose investigation hypotheses based on collected evidence.
+
+### Natural-language investigation
+
+Users can ask:
+
+```text
+Why is checkout failing?
+```
+
+or:
+
+```text
+What changed before the incident?
+```
+
+or:
+
+```text
+Have we seen this failure before?
+```
+
+### Postmortem generation
+
+FaultLens can generate a structured postmortem:
+
+```text
+Incident Summary
+Impact
+Timeline
+Root Cause
+Contributing Factors
+Detection
+Resolution
+Preventive Actions
+```
+
+---
+
+# 20. AI Safety Principle
+
+AI-generated conclusions must be distinguishable from actual system evidence.
+
+Instead of:
+
+```text
+Root cause: database failure.
+```
+
+FaultLens should show:
+
+```text
+AI Hypothesis
+
+Likely database connection exhaustion.
+
+Evidence:
+✓ Connection pool reached 100%
+✓ Connection timeout errors increased
+✓ Configuration changed shortly before incident
+
+Status:
+UNVERIFIED
+```
+
+This prevents the AI layer from pretending that speculation is fact.
+
+---
+
+# 21. Authentication & Authorization
+
+FaultLens will support production-style authentication.
+
+Users belong to organizations/projects.
+
+Example:
+
+```text
+Organization
+    │
+    ├── Admin
+    ├── Engineer
+    ├── SRE
+    └── Viewer
+```
+
+RBAC determines what each user can access.
+
+Example:
+
+| Role     | View | Investigate | Experiments | Admin |
+| -------- | ---: | ----------: | ----------: | ----: |
+| Viewer   |    ✓ |             |             |       |
+| Engineer |    ✓ |           ✓ |           ✓ |       |
+| SRE      |    ✓ |           ✓ |           ✓ |       |
+| Admin    |    ✓ |           ✓ |           ✓ |     ✓ |
+
+---
+
+# 22. Security
+
+Security is treated as a first-class engineering concern.
+
+The project will include:
+
+* Authentication
+* Authorization
+* RBAC
+* Input validation
+* Request validation
+* Rate limiting
+* Secure password handling
+* Environment variable protection
+* Audit logging
+* API security
+* CORS configuration
+* SQL injection protection through ORM usage
+* Controlled experiment isolation
+
+Secrets such as:
+
+```text
+DATABASE_URL
+JWT_SECRET
+AI_API_KEY
+```
+
+must never be committed to Git.
+
+---
+
+# 23. Real-Time Dashboard
+
+The frontend will provide an engineering dashboard containing:
+
+### Overview
+
+```text
+Active Incidents
+Critical Services
+Error Rate
+Latency
+Recent Deployments
+Running Experiments
+```
+
+### Incident page
+
+```text
+Incident
+├── Overview
+├── Timeline
+├── Logs
+├── Metrics
+├── Traces
+├── Failure Graph
+├── What Changed?
+├── Hypotheses
+├── Blast Radius
+├── Experiments
+├── Similar Incidents
+└── Postmortem
+```
+
+---
+
+# 24. Incident Timeline
+
+Every investigation gets a chronological timeline.
+
+Example:
+
+```text
+14:05  Deployment started
+14:07  Deployment completed
+14:11  Error rate +5%
+14:18  Database connections +40%
+14:25  HTTP 500 +15%
+14:32  Incident detected
+14:37  Investigation started
+14:44  Hypothesis created
+14:51  Failure reproduced
+15:02  Fix deployed
+15:08  Validation passed
+15:15  Incident resolved
+```
+
+This creates a **time-machine view of the incident**.
+
+---
+
+# 25. Testing Strategy
+
+FaultLens will not rely only on manual testing.
+
+### Unit tests
+
+Test individual functions and services.
+
+### Integration tests
+
+Test:
+
+```text
+API
++
+Database
++
+Redis
+```
+
+### End-to-end tests
+
+Test complete workflows:
+
+```text
+Login
+ ↓
+Create incident
+ ↓
+Investigate
+ ↓
+Generate evidence
+ ↓
+Run experiment
+ ↓
+Validate fix
+ ↓
+Resolve incident
+```
+
+### Load testing
+
+Measure:
+
+* API throughput
+* Telemetry ingestion
+* Queue processing
+* Database performance
+* WebSocket connections
+
+---
+
+# 26. Observability of FaultLens Itself
+
+A reliability platform should also be observable.
+
+FaultLens will expose its own:
+
+```text
+Request latency
+Error rates
+Queue depth
+Worker processing time
+Database latency
+WebSocket connections
+Job failures
+```
+
+This creates a useful engineering principle:
+
+> **The system built to investigate failures should itself be observable.**
+
+---
+
+# 27. Deployment
+
+The application should be designed to run locally using Docker.
+
+```text
+Docker Compose
+
+┌─────────────┐
+│ Web         │
+├─────────────┤
+│ API         │
+├─────────────┤
+│ Worker      │
+├─────────────┤
+│ PostgreSQL  │
+├─────────────┤
+│ Redis       │
+└─────────────┘
+```
+
+The project will also target free-tier deployment where practical.
+
+AI functionality must remain optional so that the deployed application can operate without paid AI APIs.
+
+---
+
+# 28. Development Phases
+
+The project will be built incrementally.
+
+## Phase 0 — Specification
+
+* Problem definition
+* Requirements
+* Domain model
+* Architecture
+* Database design
+* API design
+* Security model
+* Testing strategy
+
+## Phase 1 — Foundation
+
+* Repository
+* Monorepo
+* Next.js
+* NestJS
+* Worker
+* Shared packages
+* Development tooling
+
+## Phase 2 — Database
+
+* PostgreSQL
+* Prisma
+* Schema
+* Migrations
+* Seed data
+* Relationships
+
+## Phase 3 — Backend
+
+* NestJS modules
+* REST API
+* Validation
+* Error handling
+* Service architecture
+
+## Phase 4 — Authentication
+
+* Authentication
+* Sessions/JWT
+* RBAC
+* Organizations
+* Projects
+
+## Phase 5 — Frontend
+
+* Dashboard
+* Navigation
+* Incident UI
+* Service UI
+* Investigation UI
+
+## Phase 6 — Telemetry
+
+* Logs
+* Metrics
+* Traces
+* Events
+* Deployment records
+
+## Phase 7 — Investigation Engine
+
+* Correlation
+* Failure graph
+* What Changed?
+* Hypotheses
+* Blast radius
+* Timeline
+
+## Phase 8 — Async Processing
+
+* Redis
+* BullMQ
+* Workers
+* Background analysis
+* WebSockets
+
+## Phase 9 — Failure Simulator
+
+* Failure injection
+* Chaos experiments
+* Reproduction
+* Experiment results
+
+## Phase 10 — AI
+
+* Optional AI provider
+* Local LLM support
+* Evidence-based hypotheses
+* Summarization
+* Natural-language investigation
+
+## Phase 11 — Quality & Security
+
+* Unit tests
+* Integration tests
+* E2E tests
+* Security testing
+* Rate limiting
+* Audit logs
+
+## Phase 12 — DevOps
+
+* Docker
+* Docker Compose
+* GitHub Actions
+* CI/CD
+* Environment management
+
+## Phase 13 — Deployment
+
+* Production configuration
+* Free-tier deployment
+* Database deployment
+* Redis deployment
+* Monitoring
+
+## Phase 14 — Performance
+
+* Load testing
+* Database indexing
+* Queue benchmarks
+* API benchmarks
+* Telemetry ingestion benchmarks
+
+## Phase 15 — Documentation
+
+* Architecture documentation
+* API documentation
+* ADRs
+* Setup guide
+* Demo scenarios
+* Resume documentation
+* Interview preparation
+
+---
+
+# 29. Planned Technology Stack
+
+| Layer           | Technology                     |
+| --------------- | ------------------------------ |
+| Frontend        | Next.js                        |
+| Language        | TypeScript                     |
+| UI              | Tailwind CSS                   |
+| Data Fetching   | TanStack Query                 |
+| State           | Zustand                        |
+| Backend         | NestJS                         |
+| API             | REST + WebSockets              |
+| Database        | PostgreSQL                     |
+| ORM             | Prisma                         |
+| Cache           | Redis                          |
+| Queue           | BullMQ                         |
+| Background Jobs | Node.js Worker                 |
+| Authentication  | JWT/session-based architecture |
+| Testing         | Jest/Vitest + Playwright       |
+| Containers      | Docker                         |
+| CI/CD           | GitHub Actions                 |
+| AI              | Optional provider / local LLM  |
+| Package Manager | pnpm                           |
+| Repository      | Git + GitHub                   |
+
+---
+
+# 30. What Makes FaultLens Different?
+
+FaultLens is not intended to be another:
+
+* CRUD dashboard
+* Jira clone
+* Basic monitoring dashboard
+* ChatGPT wrapper
+* Log viewer
+* Generic AI SaaS
+
+Its central engineering challenge is:
+
+> **How can a software system connect distributed production evidence into a structured failure investigation?**
+
+The project therefore demonstrates concepts across multiple areas:
+
+```text
+Frontend Engineering
+        +
+Backend Engineering
+        +
+Database Design
+        +
+Distributed Systems
+        +
+Asynchronous Processing
+        +
+Real-Time Systems
+        +
+Observability
+        +
+Incident Management
+        +
+Fault Injection
+        +
+Testing
+        +
+Security
+        +
+DevOps
+        +
+AI Engineering
+```
+
+---
+
+# 31. Final Product Vision
+
+The final FaultLens experience should look conceptually like:
+
+```text
+                  FAULTLENS
+
+        Production Reliability Platform
+
+
+┌──────────────────────────────────────────────┐
+│ Active Incidents                             │
+├──────────────────────────────────────────────┤
+│                                              │
+│ 🔴 Checkout API     Critical                 │
+│ 🟠 Payment API      High                     │
+│ 🟡 Notification     Medium                   │
+│                                              │
+└──────────────────────────────────────────────┘
+
+
+                  INCIDENT
+
+                     ↓
+
+              Failure Timeline
+
+                     ↓
+
+              Failure Graph
+
+                     ↓
+
+               What Changed?
+
+                     ↓
+
+              Evidence Matrix
+
+                     ↓
+
+            Competing Hypotheses
+
+                     ↓
+
+               Blast Radius
+
+                     ↓
+
+             Failure Reproduction
+
+                     ↓
+
+                Fix Validation
+
+                     ↓
+
+             Historical Similarity
+
+                     ↓
+
+                Postmortem
+
+                     ↓
+
+             Engineering Knowledge
+```
+
+---
+
+# 32. Success Criteria
+
+FaultLens will be considered successful when a developer can:
+
+1. Create or detect a simulated production incident.
+2. View the affected services.
+3. Inspect logs, metrics and traces.
+4. See the incident timeline.
+5. Identify recent changes.
+6. Understand the failure graph.
+7. Analyze the blast radius.
+8. Create competing hypotheses.
+9. Collect evidence for each hypothesis.
+10. Reproduce the failure in a controlled environment.
+11. Apply a simulated fix.
+12. Validate whether the fix worked.
+13. Compare the incident with historical incidents.
+14. Generate a postmortem.
+15. Preserve the investigation as reusable engineering knowledge.
+
+---
+
+# 33. Engineering Goal
+
+FaultLens is being built not merely as a portfolio application, but as a demonstration of how a production-grade engineering system can be designed.
+
+The primary learning goals are:
+
+* Design before implementation
+* Clear domain boundaries
+* Relational data modeling
+* API architecture
+* Authentication and authorization
+* Asynchronous processing
+* Event-driven systems
+* Real-time communication
+* Observability
+* Failure analysis
+* Distributed-system thinking
+* Testing
+* Security
+* CI/CD
+* Performance engineering
+* AI integration without AI dependency
+
+The project will prioritize **engineering correctness and conceptual understanding over simply producing features quickly**.
+
+---
+
+## License
+
+This project is currently intended as a personal engineering and portfolio project.
