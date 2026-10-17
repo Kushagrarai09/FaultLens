@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 
 type RunStatus = "success" | "failure";
 type AiRun = {
@@ -57,7 +57,7 @@ export default function Home() {
       latency: runs.length ? runs.reduce((sum, r) => sum + r.durationMs, 0) / runs.length : 0, totalTokens };
   }, [runs]);
 
-  async function generateWithOllama(event: React.FormEvent<HTMLFormElement>) {\n    event.preventDefault();\n    setGenerating(true); setGenerationError(""); setGeneratedResponse(""); setLastGeneration(null);\n    try {\n      const response = await fetch("/api/ai/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, prompt }) });\n      const payload = await response.json();\n      if (!response.ok) throw new Error(payload.message ?? "Generation failed.");\n      setGeneratedResponse(payload.response);\n      setLastGeneration({ durationMs: payload.run.durationMs, inputTokens: payload.run.inputTokens, outputTokens: payload.run.outputTokens, id: payload.run.id });\n      setPrompt("");\n      await loadRuns(true);\n    } catch (e) { setGenerationError(e instanceof Error ? e.message : "Could not generate a response."); await loadRuns(true); }\n    finally { setGenerating(false); }\n  }\n\n  async function createDemoRun() {
+  async function generateWithOllama(event: FormEvent<HTMLFormElement>) {\n    event.preventDefault();\n    setGenerating(true); setGenerationError(""); setGeneratedResponse(""); setLastGeneration(null);\n    try {\n      const response = await fetch("/api/ai/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, prompt }) });\n      const payload = await response.json();\n      if (!response.ok) throw new Error(payload.message ?? "Generation failed.");\n      setGeneratedResponse(payload.response);\n      setLastGeneration({ durationMs: payload.run.durationMs, inputTokens: payload.run.inputTokens, outputTokens: payload.run.outputTokens, id: payload.run.id });\n      setPrompt("");\n      await loadRuns(true);\n    } catch (e) { setGenerationError(e instanceof Error ? e.message : "Could not generate a response."); await loadRuns(true); }\n    finally { setGenerating(false); }\n  }\n\n  async function createDemoRun() {
     setCreating(true); setError("");
     const failed = Math.random() < 0.18;
     try {
