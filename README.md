@@ -172,3 +172,14 @@ OpenTelemetry, sophisticated alerting, and background job infrastructure are enh
 ---
 
 **Current focus:** Verify Phases 1–3 locally, including PostgreSQL persistence and real local Ollama generation, before merging. Cost analytics and prompt evaluations remain future phases.
+
+
+## Phase 5 — Prompt versioning and evaluation (in progress)
+
+Phase 5 adds prompt templates with immutable numbered versions, reusable evaluation datasets, and a comparison workflow that runs the same examples against 2–4 selected prompt versions using Ollama. Results include a clearly labeled heuristic word-overlap score, successful/failed calls, latency, and known token usage per version.
+
+- Apply [the Phase 5 database migration](apps/api/migrations/002_create_prompt_evaluations.sql) after the Phase 1 migration.
+- Open `http://localhost:3000/evaluations` after starting the API, web app, PostgreSQL, and Ollama.
+- Read the [Phase 5 guide](docs/roadmap/PHASE-5.md) for endpoints, request examples, metric definitions, privacy notes, and the local verification checklist.
+
+Prompt templates and authored evaluation examples are stored intentionally. Generated response text is not persisted. The initial score measures word overlap with the expected output; it is a rough regression signal, not semantic correctness. This implementation has not yet been built or tested locally and must remain unmerged until verification passes.
