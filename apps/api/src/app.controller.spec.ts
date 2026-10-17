@@ -19,4 +19,13 @@ describe('AppController', () => {
       expect(appController.getHello()).toBe('Hello World!');
     });
   });
+
+  describe('health', () => {
+    it('returns a stable liveness payload', () => {
+      expect(appController.getHealth()).toEqual({
+        status: 'ok',
+        service: 'faultlens-api',
+      });
+    });
+  });
 });
