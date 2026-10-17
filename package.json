@@ -5,7 +5,7 @@
   "description": "Production failure investigation and reliability platform",
   "packageManager": "pnpm@10",
   "scripts": {
-    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "dev": "pnpm --parallel --filter web --filter api dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint"

@@ -143,3 +143,8 @@ Therefore, treat documented capabilities as intended features until code and tes
 - Do not persist raw prompts or completions by default.
 - Cost is an estimate; unknown usage/pricing means unavailable, not zero.
 - Keep commits small and meaningful.
+
+
+## Implementation numbering note
+
+The feature branches have now implemented run ingestion, dashboard, Ollama generation, prompt evaluation, and reliability alerts as Phases 1–6. The current release-readiness work is tracked as [Phase 7](PHASE-7.md). OpenTelemetry and heavier background processing remain later enhancements, not prerequisites for this portfolio release. Keep this mapping aligned with the README as the project evolves.
