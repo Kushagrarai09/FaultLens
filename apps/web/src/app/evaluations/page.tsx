@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type PromptVersion = { id: string; version: number; template: string; created_at: string };
 type Prompt = { id: string; name: string; model: string; versions: PromptVersion[] };
-type EvalCase = { id?: string; input: string; expectedOutput?: string; expected_output?: string };
 type Dataset = { id: string; name: string; description: string; caseCount: number; cases: EvalCase[] };
 type ResultSummary = {
   promptVersionId: string; promptName: string; version: number; model: string;
@@ -69,7 +68,7 @@ export default function EvaluationsPage() {
     return payload;
   }
 
-  async function createPrompt(event: React.FormEvent<HTMLFormElement>) {
+  async function createPrompt(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError("");
     try {
       const saved = await postJson("/api/prompts", { name: promptName, model, template });
