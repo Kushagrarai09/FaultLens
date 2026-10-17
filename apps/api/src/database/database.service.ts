@@ -18,7 +18,7 @@ export class DatabaseService implements OnModuleDestroy {
 
   async query<T extends QueryResultRow = QueryResultRow>(
     text: string,
-    values: (string | number | null)[] = [],
+    values: (string | number | boolean | null)[] = [],
   ): Promise<QueryResult<T>> {
     if (!this.pool) {
       throw new ServiceUnavailableException(
