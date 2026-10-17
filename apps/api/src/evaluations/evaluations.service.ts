@@ -147,10 +147,11 @@ export class EvaluationsService {
     );
     if (!casesResult.rows.length) throw new BadRequestException('The selected dataset has no test cases.');
 
+    const placeholders = versionIds.map((_, index) => `${index + 1}`).join(', ');
     const versionsResult = await this.database.query<VersionRow>(
       `SELECT v.id, v.prompt_id, v.version, v.template, v.created_at, p.name AS prompt_name, p.model
        FROM prompt_versions v JOIN prompt_templates p ON p.id = v.prompt_id
-       WHERE v.id = ANY($1::uuid[])`, [versionIds],
+       WHERE v.id IN (${placeholders})`, versionIds,
     );
     const versionsById = new Map(versionsResult.rows.map((row) => [row.id, row]));
     const versions = versionIds.map((id) => versionsById.get(id)).filter((row): row is VersionRow => Boolean(row));
