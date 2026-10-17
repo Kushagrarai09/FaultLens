@@ -195,3 +195,15 @@ Phase 6 adds configurable metadata-based reliability rules. Developers can defin
 - Read the [Phase 6 guide](docs/roadmap/PHASE-6.md) for supported metrics, API examples, setup, and limitations.
 
 This is on-demand evaluation, not continuous monitoring. It does not send external notifications or store alert-event history. It uses metadata only and does not store prompts or generated responses. Builds, tests, migration, and browser checks have not yet been run locally; keep the PR in draft until verification passes.
+
+
+## Phase 7 — Release readiness (in progress)
+
+Phase 7 adds GitHub Actions checks, an optional synthetic demo-run seed, an environment-variable example, an API liveness endpoint, and a release walkthrough checklist. See [the Phase 7 guide](docs/roadmap/PHASE-7.md).
+
+- CI workflow: `.github/workflows/ci.yml`
+- API liveness endpoint: `GET /health`
+- Optional synthetic demo data: `apps/api/seeds/demo_runs.sql`
+- Environment template: `.env.example`
+
+This phase has not yet passed remote CI or local build, database, and browser verification. The application also lacks authentication/workspace authorization, so do not expose it publicly yet.
