@@ -4,7 +4,7 @@
 
 FaultLens is being built to help developers understand how AI-powered features behave: which requests succeed or fail, how long they take, how much token usage they incur, and how prompt changes affect quality, latency, and estimated cost.
 
-> **Project status:** Early development. The repository currently contains a Next.js frontend starter, a NestJS API starter, and a TypeScript worker entry point. The end-to-end observability workflow described below is the target design, not a claim that those features are already implemented. See the roadmap for the implementation sequence.
+> **Project status:** Early development. Phase 1 API and Phase 2 dashboard are implemented on feature branches, but still require local dependency installation, builds, database checks, and browser verification before they can be considered complete. The dashboard displays the latest 50 stored run records and can create synthetic demo runs; it does not call a real AI provider yet.
 
 ## Why FaultLens?
 
@@ -144,7 +144,7 @@ The API stores metadata only; raw prompts and model responses are not accepted. 
 
 This feature is under implementation and must pass local build, database, and API tests before it is considered complete.
 
-## Contributing and tracking progress
+## Phase 2 dashboard (in progress)\n\nThe dashboard in the Phase 2 feature branch includes recent-run metrics, a reliability snapshot, searchable and filterable run history, refresh/error/empty states, and a synthetic demo-run button. The Next.js route handler proxies requests to the NestJS API. Run the API on port 3001 and the web app on port 3000; see [the Phase 2 guide](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-2-observability-dashboard/docs/roadmap/PHASE-2.md). Metrics describe only the latest 50 records. No prompt/response content or estimated costs are shown. This phase still needs local build and browser verification.\n\n## Contributing and tracking progress
 
 Development is organized through repository issues and the implementation roadmap:
 
@@ -171,4 +171,4 @@ OpenTelemetry, sophisticated alerting, and background job infrastructure are enh
 
 ---
 
-**Current focus:** Complete Phase 0, verify the local development baseline, and then implement request ingestion before building analytics or advanced infrastructure.
+**Current focus:** Verify the Phase 1 ingestion API and Phase 2 dashboard locally before merging either feature. After that, Phase 3 will integrate one real AI provider and capture actual request outcomes and usage metadata.
