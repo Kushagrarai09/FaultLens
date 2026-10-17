@@ -83,7 +83,8 @@ export default function Home() {
         <a className="nav-item active" href="#overview"><span className="nav-icon">◫</span>Overview</a>
         <a className="nav-item" href="#runs"><span className="nav-icon">≋</span>AI runs<span className="nav-count">{runs.length}</span></a>
         <a className="nav-item" href="/evaluations"><span className="nav-icon">⌁</span>Prompt evaluations<span className="nav-count">NEW</span></a>
-        <span className="nav-item disabled"><span className="nav-icon">◷</span>Cost analytics<span className="soon">SOON</span></span>
+        <a className="nav-item" href="/analytics"><span className="nav-icon">◷</span>Cost & performance</a>
+        <a className="nav-item" href="/alerts"><span className="nav-icon">⚑</span>Reliability alerts<span className="nav-count">NEW</span></a>
       </nav>
       <div className="sidebar-bottom">
         <div className="privacy-card"><span className="privacy-icon">⌑</span><strong>Privacy by default</strong><p>Run metadata only. Prompts and responses are not stored.</p></div>
