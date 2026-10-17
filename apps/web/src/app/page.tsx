@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 
 type RunStatus = "success" | "failure";
 type AiRun = {
@@ -21,6 +21,12 @@ export default function Home() {
   const [filter, setFilter] = useState<"all" | RunStatus>("all");
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  const [model, setModel] = useState("qwen2.5:3b");
+  const [prompt, setPrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [generatedResponse, setGeneratedResponse] = useState("");
+  const [generationError, setGenerationError] = useState("");
+  const [lastGeneration, setLastGeneration] = useState<{ durationMs: number; inputTokens: number | null; outputTokens: number | null; id: string } | null>(null);
 
   const loadRuns = useCallback(async (quiet = false) => {
     quiet ? setRefreshing(true) : setLoading(true);
@@ -51,7 +57,7 @@ export default function Home() {
       latency: runs.length ? runs.reduce((sum, r) => sum + r.durationMs, 0) / runs.length : 0, totalTokens };
   }, [runs]);
 
-  async function createDemoRun() {
+  async function generateWithOllama(event: FormEvent<HTMLFormElement>) {\n    event.preventDefault();\n    setGenerating(true); setGenerationError(""); setGeneratedResponse(""); setLastGeneration(null);\n    try {\n      const response = await fetch("/api/ai/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, prompt }) });\n      const payload = await response.json();\n      if (!response.ok) throw new Error(payload.message ?? "Generation failed.");\n      setGeneratedResponse(payload.response);\n      setLastGeneration({ durationMs: payload.run.durationMs, inputTokens: payload.run.inputTokens, outputTokens: payload.run.outputTokens, id: payload.run.id });\n      setPrompt("");\n      await loadRuns(true);\n    } catch (e) { setGenerationError(e instanceof Error ? e.message : "Could not generate a response."); await loadRuns(true); }\n    finally { setGenerating(false); }\n  }\n\n  async function createDemoRun() {
     setCreating(true); setError("");
     const failed = Math.random() < 0.18;
     try {
@@ -93,6 +99,16 @@ export default function Home() {
           <div className="heading-actions"><span className="muted-note">Showing latest 50 runs</span><button className="primary-button" onClick={createDemoRun} disabled={creating}><b>{creating ? "…" : "+"}</b>{creating ? "Creating run…" : "Create demo run"}</button></div>
         </section>
         {error && <div className="alert" role="alert"><span className="alert-mark">!</span><div><strong>Data connection issue</strong><p>{error}</p><small>Check PostgreSQL, the Phase 1 migration, and that the API is running on port 3001.</small></div><button onClick={() => void loadRuns(true)}>Try again</button></div>}
+        <section className="panel playground-panel" id="playground">
+          <div className="panel-heading"><div><div className="eyebrow"><i />LOCAL MODEL PLAYGROUND</div><h2>Run a real AI request</h2><p>Generate with Ollama and capture timing and token metadata.</p></div><span className="database-pill"><i />METADATA ONLY</span></div>
+          <form className="playground-form" onSubmit={generateWithOllama}>
+            <label className="field-label">Ollama model<input value={model} onChange={e => setModel(e.target.value)} maxLength={160} required placeholder="qwen2.5:3b" /></label>
+            <label className="field-label">Prompt<textarea value={prompt} onChange={e => setPrompt(e.target.value)} maxLength={12000} required rows={3} placeholder="Ask your local model something… (up to 12,000 characters)" /></label>
+            <div className="playground-actions"><span>Prompt and response are not stored by FaultLens.</span><button className="primary-button" type="submit" disabled={generating || !prompt.trim() || !model.trim()}><b>{generating ? "…" : "▶"}</b>{generating ? "Generating (up to 60s)…" : "Generate response"}</button></div>
+          </form>
+          {generationError && <div className="generation-error" role="alert"><strong>Generation failed</strong><p>{generationError}</p><small>Confirm Ollama is running and the model is installed with <code>ollama list</code>.</small></div>}
+          {generatedResponse && <div className="generation-result"><div className="result-heading"><strong>Model response</strong><span className="badge succeeded"><i/>Recorded</span></div><p>{generatedResponse}</p>{lastGeneration && <div className="result-meta"><span>{duration(lastGeneration.durationMs)}</span><span>{number(lastGeneration.inputTokens ?? 0)} input tokens</span><span>{number(lastGeneration.outputTokens ?? 0)} output tokens</span><span title={lastGeneration.id}>Run {lastGeneration.id.slice(0,8)}…</span></div>}</div>}
+        </section>
         <section className="metrics-grid" aria-label="Recent run metrics">
           <Metric title="Total runs" value={loading ? "—" : number(metrics.total)} icon="↗" tone="purple" caption="RECENT ACTIVITY" note="Last 50 records" progress={runs.length ? 100 : 0}/>
           <Metric title="Success rate" value={loading ? "—" : `${metrics.rate}%`} icon="✓" tone="green" caption="● SUCCESSFUL" note={`${number(metrics.successful)} runs`} progress={metrics.rate}/>
