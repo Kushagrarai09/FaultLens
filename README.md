@@ -131,6 +131,19 @@ Repository: [FaultLens on GitHub](https://github.com/Kushagrarai09/FaultLens)
 
 As implementation progresses, this section will be replaced with tested, exact commands, environment-variable documentation, and any database setup steps required for the current phase.
 
+## Phase 1 API (in progress)
+
+The first backend milestone adds a synthetic AI-run ingestion API backed by PostgreSQL.
+
+- `POST /api/runs` — validate and save synthetic run metadata.
+- `GET /api/runs?limit=20&offset=0` — list runs, newest first, with pagination.
+- `GET /api/runs/:id` — retrieve one run by UUID.
+- `GET /` — existing greeting endpoint.
+
+The API stores metadata only; raw prompts and model responses are not accepted. To configure the database, create a PostgreSQL database, set `DATABASE_URL`, and apply [the Phase 1 migration](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-1-ai-run-ingestion/apps/api/migrations/001_create_ai_runs.sql). Full setup and example requests are documented in [the Phase 1 guide](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-1-ai-run-ingestion/docs/roadmap/PHASE-1.md).
+
+This feature is under implementation and must pass local build, database, and API tests before it is considered complete.
+
 ## Contributing and tracking progress
 
 Development is organized through repository issues and the implementation roadmap:
