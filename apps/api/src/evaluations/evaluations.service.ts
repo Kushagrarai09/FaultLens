@@ -17,10 +17,6 @@ const uuid = (value: unknown, field: string): string => {
   }
   return value;
 };
-const asNumber = (value: unknown): number | null =>
-  typeof value === 'number' && Number.isFinite(value) ? value :
-  typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)) ? Number(value) : null;
-
 interface VersionRow extends DbRow {
   id: string; prompt_id: string; version: number; template: string;
   prompt_name: string; model: string; created_at: Date;
