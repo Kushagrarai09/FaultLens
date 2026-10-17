@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiRunsController } from './ai-runs.controller.js';
 import type { AiRunsService } from './ai-runs.service.js';
 
@@ -10,6 +10,10 @@ describe('AiRunsController', () => {
     findById: vi.fn(),
   };
   const controller = new AiRunsController(service as unknown as AiRunsService);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it('validates and forwards a synthetic run to the service', async () => {
     service.create.mockResolvedValue({ id: 'run-id' });
