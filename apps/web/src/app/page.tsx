@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 
 type RunStatus = "success" | "failure";
 type AiRun = {
@@ -105,7 +105,7 @@ export default function Home() {
             <div className="activity-note"><i/>Metrics use the latest 50 records, not the entire database.</div>
           </article>
           <article className="panel"><div className="panel-heading"><div><h2>Reliability snapshot</h2><p>Recent run outcomes</p></div><span className="snapshot-icon">⌁</span></div>
-            <div className="reliability"><div className="donut" style={{ "--angle": `${metrics.rate * 3.6}deg` } as React.CSSProperties}><div><strong>{loading ? "—" : `${metrics.rate}%`}</strong><small>SUCCESS</small></div></div>
+            <div className="reliability"><div className="donut" style={{ "--angle": `${metrics.rate * 3.6}deg` } as CSSProperties}><div><strong>{loading ? "—" : `${metrics.rate}%`}</strong><small>SUCCESS</small></div></div>
               <div className="legend"><div><i className="good-dot"/><span>Successful</span><b>{loading ? "—" : metrics.successful}</b></div><div><i className="bad-dot"/><span>Failed</span><b>{loading ? "—" : metrics.failed}</b></div></div></div>
             <div className="health-footer"><span className={metrics.failed ? "failure-text" : "success-text"}>● {metrics.failed ? "Failures detected" : "No recent failures"}</span><span>{loading ? "Loading…" : `${metrics.total} total`}</span></div>
           </article>
