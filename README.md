@@ -183,3 +183,15 @@ Phase 5 adds prompt templates with immutable numbered versions, reusable evaluat
 - Read the [Phase 5 guide](docs/roadmap/PHASE-5.md) for endpoints, request examples, metric definitions, privacy notes, and the local verification checklist.
 
 Prompt templates and authored evaluation examples are stored intentionally. Generated response text is not persisted. The initial score measures word overlap with the expected output; it is a rough regression signal, not semantic correctness. This implementation has not yet been built or tested locally and must remain unmerged until verification passes.
+
+
+## Phase 6 — Reliability alerts (in progress)
+
+Phase 6 adds configurable metadata-based reliability rules. Developers can define thresholds for failure rate, P95 latency, or failed-run count over a 5-minute to 24-hour window, then evaluate enabled rules against recent stored AI runs.
+
+- Dashboard: `http://localhost:3000/alerts`
+- API: `GET/POST /api/alerts/rules`, `PATCH /api/alerts/rules/:id`, and `POST /api/alerts/evaluate`.
+- Apply [the Phase 6 migration](apps/api/migrations/003_create_alert_rules.sql) after the Phase 1 migration.
+- Read the [Phase 6 guide](docs/roadmap/PHASE-6.md) for supported metrics, API examples, setup, and limitations.
+
+This is on-demand evaluation, not continuous monitoring. It does not send external notifications or store alert-event history. It uses metadata only and does not store prompts or generated responses. Builds, tests, migration, and browser checks have not yet been run locally; keep the PR in draft until verification passes.
