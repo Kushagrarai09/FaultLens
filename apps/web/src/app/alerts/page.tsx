@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type Metric = "failure_rate_percent" | "p95_latency_ms" | "failed_runs";
@@ -32,7 +33,10 @@ export default function AlertsPage() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not connect to FaultLens."); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   async function createRule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setResults(null);
@@ -71,7 +75,7 @@ export default function AlertsPage() {
   return <main className="min-h-screen bg-slate-950 px-5 py-8 text-slate-100 sm:px-8 lg:px-12">
     <div className="mx-auto max-w-6xl">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
-        <div><a href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</a><p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-violet-300">FaultLens · Phase 6</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Reliability alerts</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Define reliability thresholds and evaluate recent AI-run metadata to identify failure spikes and slow responses.</p></div>
+        <div><Link href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</Link><p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-violet-300">FaultLens · Phase 6</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Reliability alerts</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Define reliability thresholds and evaluate recent AI-run metadata to identify failure spikes and slow responses.</p></div>
         <div className="flex gap-2"><button className="rounded-lg border border-slate-700 px-4 py-2.5 text-sm hover:border-violet-400" onClick={() => void load()} disabled={loading || busy}>↻ Refresh rules</button><button className={button} onClick={() => void evaluate()} disabled={busy || rules.every(rule => !rule.enabled)}>{busy ? "Working…" : "Evaluate enabled rules"}</button></div>
       </header>
       <div className="mb-6 rounded-xl border border-amber-900/70 bg-amber-950/30 p-4 text-sm leading-6 text-amber-100/90"><strong>On-demand evaluation only.</strong> These rules do not run continuously and do not send email, Slack, or other notifications. No runs in a time window is shown as insufficient data, not as healthy.</div>
