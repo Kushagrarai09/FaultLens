@@ -4,7 +4,7 @@
 
 FaultLens is being built to help developers understand how AI-powered features behave: which requests succeed or fail, how long they take, how much token usage they incur, and how prompt changes affect quality, latency, and estimated cost.
 
-> **Project status:** Early development. Phase 1 API and Phase 2 dashboard are implemented on feature branches, but still require local dependency installation, builds, database checks, and browser verification before they can be considered complete. The dashboard displays the latest 50 stored run records and can create synthetic demo runs; it does not call a real AI provider yet.
+> **Project status:** Feature implementation exists on stacked feature branches and is not yet release-verified. CI, migrations, model generation, and browser workflows must pass on the integrated branch before features should be described as verified. The application is not production-ready: authentication and workspace authorization are not implemented.
 
 ## Why FaultLens?
 
@@ -71,7 +71,7 @@ not required for the first synchronous MVP workflow.
 | TypeScript worker | Reserved for background processing when it becomes necessary |
 | Tests | Verify validation, persistence, provider error handling, evaluation, and key user flows |
 
-The existing repository already has the frontend, API, and worker starter structure. Database persistence, the real AI integration, dashboard workflows, and prompt evaluation still need to be implemented and verified.
+The repository contains the frontend, API, PostgreSQL persistence, Ollama generation, analytics, prompt evaluation, and reliability-alert implementations on feature branches. They still need integration and verification in a clean checkout.
 
 ## Development roadmap
 
@@ -118,7 +118,7 @@ This is a high-level map; individual files and scripts may evolve as the project
 
 ## Getting started
 
-**Local setup is being verified as part of Phase 0.** The repository uses pnpm in its existing monorepo setup. Before relying on any command, check the root `package.json` and the app-specific scripts, because the development scripts may need alignment.
+**Use the release-readiness guide on the integration branch as the source of truth for local setup.** The phase branches are stacked and have not yet been fully verified from a clean checkout. Do not assume a green build until the GitHub Actions run passes.
 
 1. Install a supported Node.js version and pnpm.
 2. Clone the repository and enter its directory.
