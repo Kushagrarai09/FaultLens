@@ -153,6 +153,31 @@ export default function Home() {
         <header className="topbar"><div><p className="eyebrow">AI OBSERVABILITY / OVERVIEW</p><h1>Run health at a glance<span>.</span></h1><p className="subtitle">Track requests, troubleshoot failures, and compare prompt versions.</p></div><button className="secondary-button" onClick={() => void loadRuns(true)} disabled={refreshing}>{refreshing ? "Refreshing…" : "↻ Refresh"}</button></header>
         {error && <div role="alert" className="error-banner"><strong>Could not load or create run</strong><p>{error}</p></div>}
 
+        <section className="panel mb-6" aria-labelledby="playground-title">
+          <div className="panel-heading">
+            <div><h2 id="playground-title">Ollama playground</h2><p>Send a real prompt to a local model and inspect the recorded metadata.</p></div>
+            <span className="database-pill"><i />REAL GENERATION</span>
+          </div>
+          <form className="mt-5 space-y-4" onSubmit={generateWithOllama}>
+            <label className="block text-sm text-slate-300">Model
+              <input className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-violet-400" value={model} onChange={(event) => setModel(event.target.value)} maxLength={160} required />
+            </label>
+            <label className="block text-sm text-slate-300">Prompt
+              <textarea className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-violet-400" value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={12000} rows={4} placeholder="Ask the local model something…" required />
+            </label>
+            <div className="flex flex-wrap items-center gap-3">
+              <button className="primary-button" disabled={generating || !prompt.trim() || !model.trim()}>{generating ? "Generating…" : "Run prompt"}</button>
+              <span className="text-xs text-slate-500">Raw prompts and outputs are returned to the browser but not stored in run history.</span>
+            </div>
+          </form>
+          {generationError && <div role="alert" className="mt-4 rounded-lg border border-rose-900 bg-rose-950/40 p-3 text-sm text-rose-200"><strong>Generation failed</strong><p className="mt-1">{generationError}</p><p className="mt-1 text-xs text-rose-300/80">Check that Ollama is running, the selected model is installed, and the API can reach it.</p></div>}
+          {generatedResponse && <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/80 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Model response</h3>{lastGeneration && <span className="text-xs text-slate-400">{duration(lastGeneration.durationMs)} · {lastGeneration.inputTokens === null ? "input tokens unknown" : number(lastGeneration.inputTokens)} in · {lastGeneration.outputTokens === null ? "output tokens unknown" : number(lastGeneration.outputTokens)} out</span>}</div>
+            <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">{generatedResponse}</p>
+            {lastGeneration && <p className="mt-3 break-all text-xs text-slate-500">Run ID: {lastGeneration.id}</p>}
+          </div>}
+        </section>
+
         <section className="metrics-grid" aria-label="Run summary">
           <Metric title="AI runs" value={loading ? "—" : number(metrics.total)} icon="↗" tone="violet" caption="RECORDED REQUESTS" note="Latest 50 loaded" progress={Math.min(100, metrics.total * 2)}/>
           <Metric title="Success rate" value={loading ? "—" : `${metrics.rate}%`} icon="✓" tone="green" caption="SUCCESSFUL" note={`${number(metrics.successful)} runs`} progress={metrics.rate}/>
