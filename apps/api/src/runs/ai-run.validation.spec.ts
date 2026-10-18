@@ -30,6 +30,7 @@ describe('parseCreateAiRunInput', () => {
       { ...validInput, inputTokens: -1 },
       { ...validInput, outputTokens: 1.5 },
       { ...validInput, inputTokens: 2_147_483_648 },
+      { ...validInput, outputTokens: 2_147_483_648 },
     ]) expect(() => parseCreateAiRunInput(bad)).toThrow(BadRequestException);
   });
 
@@ -44,5 +45,6 @@ describe('parseCreateAiRunInput', () => {
 
   it('rejects a non-object body', () => {
     expect(() => parseCreateAiRunInput(null)).toThrow(BadRequestException);
+    expect(() => parseCreateAiRunInput([])).toThrow(BadRequestException);
   });
 });
