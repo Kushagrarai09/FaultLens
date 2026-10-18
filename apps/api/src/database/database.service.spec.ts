@@ -1,5 +1,5 @@
 import { ServiceUnavailableException } from '@nestjs/common';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const poolQuery = vi.fn();
 const poolEnd = vi.fn().mockResolvedValue(undefined);
@@ -9,18 +9,24 @@ vi.mock('pg', () => ({
   Pool: class MockPool {
     query = poolQuery;
     end = poolEnd;
-    constructor(_options?: unknown) { poolInstances.push(this); }
+    constructor(_options?: { connectionString?: string; max?: number }) {
+      poolInstances.push(this);
+    }
   },
 }));
 
 import { DatabaseService } from './database.service.js';
 
 describe('DatabaseService', () => {
-  const originalDatabaseUrl = process.env.DATABASE_URL;
+  let originalDatabaseUrl: string | undefined;
 
-  afterEach(() => {
+  beforeEach(() => {
+    originalDatabaseUrl = process.env.DATABASE_URL;
     vi.clearAllMocks();
     poolInstances.length = 0;
+  });
+
+  afterEach(() => {
     if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL;
     else process.env.DATABASE_URL = originalDatabaseUrl;
   });
@@ -33,7 +39,7 @@ describe('DatabaseService', () => {
     expect(poolInstances).toHaveLength(0);
   });
 
-  it('passes parameterized SQL and values through to the pool', async () => {
+  it('passes parameterized SQL and values to the pool and closes it on shutdown', async () => {
     process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/test';
     poolQuery.mockResolvedValueOnce({ rows: [{ value: 1 }] });
     const service = new DatabaseService();
@@ -44,16 +50,19 @@ describe('DatabaseService', () => {
     expect(poolEnd).toHaveBeenCalledOnce();
   });
 
-  it('maps database connection failures to a sanitized 503 without exposing SQL or credentials', async () => {
+  it('maps database failures to a sanitized 503 without exposing query or credentials', async () => {
     process.env.DATABASE_URL = 'postgresql://user:secret-password@localhost:5432/test';
-    poolQuery.mockRejectedValueOnce(new Error('password=secret-password SQL SELECT private_table'));
+    poolQuery.mockRejectedValue(new Error('password=secret-password private_table connection refused'));
     const service = new DatabaseService();
-    await expect(service.query('SELECT private_value FROM private_table')).rejects.toBeInstanceOf(ServiceUnavailableException);
+    let thrown: unknown;
     try {
       await service.query('SELECT private_value FROM private_table');
     } catch (error) {
-      expect(String(error)).not.toContain('secret-password');
-      expect(String(error)).not.toContain('private_table');
+      thrown = error;
     }
+    expect(thrown).toBeInstanceOf(ServiceUnavailableException);
+    expect(String(thrown)).not.toContain('secret-password');
+    expect(String(thrown)).not.toContain('private_table');
+    expect(poolQuery).toHaveBeenCalledOnce();
   });
 });
