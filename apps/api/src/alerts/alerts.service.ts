@@ -21,7 +21,18 @@ const positiveNumber = (value: unknown, field: string): number => {
   }
   return number;
 };
-const toRule = (row: AlertRuleRow) => ({
+export interface AlertRuleDto {
+  id: string;
+  name: string;
+  metric: AlertMetric;
+  threshold: number;
+  windowMinutes: number;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const toRule = (row: AlertRuleRow): AlertRuleDto => ({
   id: row.id, name: row.name, metric: row.metric, threshold: Number(row.threshold),
   windowMinutes: row.window_minutes, enabled: row.enabled,
   createdAt: row.created_at, updatedAt: row.updated_at,
@@ -88,7 +99,15 @@ export class AlertsService {
     const rulesResult = await this.database.query<AlertRuleRow>(
       'SELECT id, name, metric, threshold, window_minutes, enabled, created_at, updated_at FROM alert_rules WHERE enabled = TRUE ORDER BY created_at DESC LIMIT 100',
     );
-    const alerts = [];
+    const alerts: Array<{
+      rule: AlertRuleDto;
+      status: 'insufficient_data' | 'triggered' | 'normal';
+      observedValue: number | null;
+      sampleCount: number;
+      failedRuns: number;
+      evaluatedAt: string;
+      message: string;
+    }> = [];
     for (const rule of rulesResult.rows) {
       const metricResult = await this.database.query<MetricRow>(
         `SELECT COUNT(*)::text AS sample_count,

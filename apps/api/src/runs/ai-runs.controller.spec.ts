@@ -39,15 +39,13 @@ describe('AiRunsController', () => {
   });
 
   it('rejects invalid run data before calling the service', async () => {
-    await expect(
-      controller.create({
-        provider: '',
-        model: 'demo-model',
-        status: 'success',
-        durationMs: 100,
-        startedAt: '2026-10-17T12:00:00.000Z',
-      }),
-    ).rejects.toThrow(BadRequestException);
+    expect(() => controller.create({
+      provider: '',
+      model: 'demo-model',
+      status: 'success',
+      durationMs: 100,
+      startedAt: '2026-10-17T12:00:00.000Z',
+    })).toThrow(BadRequestException);
     expect(service.create).not.toHaveBeenCalled();
   });
 

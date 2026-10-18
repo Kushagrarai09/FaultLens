@@ -44,9 +44,9 @@ export class AiRunsService {
         input.model,
         input.status,
         input.durationMs,
-        input.inputTokens,
-        input.outputTokens,
-        input.errorCode,
+        input.inputTokens ?? null,
+        input.outputTokens ?? null,
+        input.errorCode ?? null,
         input.startedAt,
       ],
     );

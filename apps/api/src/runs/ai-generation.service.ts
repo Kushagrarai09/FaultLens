@@ -104,7 +104,7 @@ export class AiGenerationService {
   }
 
   private asTokenCount(value: unknown): number | null {
-    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 2_147_483_647
       ? value
       : null;
   }

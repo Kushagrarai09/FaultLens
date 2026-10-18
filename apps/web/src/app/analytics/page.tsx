@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type ModelAnalytics = {
@@ -58,7 +59,8 @@ export default function AnalyticsPage() {
   const [error, setError] = useState("");
 
   const load = useCallback(async (quiet = false) => {
-    quiet ? setRefreshing(true) : setLoading(true);
+    if (quiet) setRefreshing(true);
+    else setLoading(true);
     setError("");
     try {
       const response = await fetch("/api/analytics/summary", { cache: "no-store" });
@@ -73,13 +75,16 @@ export default function AnalyticsPage() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   return <main className="min-h-screen bg-slate-950 px-5 py-8 text-slate-100 sm:px-8 lg:px-12">
     <div className="mx-auto max-w-7xl">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <a href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</a>
+          <Link href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</Link>
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-violet-300">FaultLens · Phase 4</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Usage & performance analytics</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">All-time aggregates from stored run metadata, including latency percentiles and known token usage.</p>
@@ -130,7 +135,7 @@ export default function AnalyticsPage() {
 
         <section className="mt-6 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70">
           <div className="border-b border-slate-800 p-5"><h2 className="text-lg font-semibold">Performance by model</h2><p className="mt-1 text-sm text-slate-400">Top 20 provider/model groups by request volume.</p></div>
-          {data.byModel.length === 0 ? <div className="p-10 text-center"><p className="font-medium">No runs recorded yet</p><p className="mt-2 text-sm text-slate-400">Create a demo run or send a request from the Ollama playground, then refresh this page.</p><a className="mt-4 inline-block text-sm text-violet-300 hover:text-violet-200" href="/">Go to overview →</a></div> :
+          {data.byModel.length === 0 ? <div className="p-10 text-center"><p className="font-medium">No runs recorded yet</p><p className="mt-2 text-sm text-slate-400">Create a demo run or send a request from the Ollama playground, then refresh this page.</p><Link className="mt-4 inline-block text-sm text-violet-300 hover:text-violet-200" href="/">Go to overview →</Link></div> :
             <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-slate-950/60 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Provider / model</th><th className="px-5 py-3">Runs</th><th className="px-5 py-3">Success</th><th className="px-5 py-3">Avg latency</th><th className="px-5 py-3">P95 latency</th><th className="px-5 py-3">Known tokens</th></tr></thead>
               <tbody>{data.byModel.map(item => <tr key={`${item.provider}:${item.model}`} className="border-t border-slate-800 text-slate-300">

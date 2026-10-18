@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type PromptVersion = { id: string; version: number; template: string; created_at: string };
+type EvalCase = { id: string; input: string; expected_output: string };
 type Prompt = { id: string; name: string; model: string; versions: PromptVersion[] };
 type Dataset = { id: string; name: string; description: string; caseCount: number; cases: EvalCase[] };
 type ResultSummary = {
@@ -59,7 +61,10 @@ export default function EvaluationsPage() {
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   async function postJson(path: string, body: unknown) {
     const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -122,7 +127,7 @@ export default function EvaluationsPage() {
   return <main className="min-h-screen bg-slate-950 px-5 py-8 text-slate-100 sm:px-8 lg:px-12">
     <div className="mx-auto max-w-7xl">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
-        <div><a href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</a><p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-violet-300">FaultLens · Phase 5</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Prompt evaluation</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Create immutable prompt versions, test them against the same examples, and compare a transparent baseline score with latency and token usage.</p></div>
+        <div><Link href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</Link><p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-violet-300">FaultLens · Phase 5</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Prompt evaluation</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Create immutable prompt versions, test them against the same examples, and compare a transparent baseline score with latency and token usage.</p></div>
         <button className={buttonClass} onClick={() => void load()} disabled={loading || busy}>↻ Refresh</button>
       </header>
 
@@ -159,7 +164,7 @@ export default function EvaluationsPage() {
         </section>
 
         <section className={`${cardClass} xl:col-span-2`}>
-          <h2 className="text-xl font-semibold">4. Run a fair comparison</h2><p className="mt-2 text-sm text-slate-400">The same dataset is sent to each selected version's configured Ollama model, one case at a time. Choose 2–4 versions.</p>
+          <h2 className="text-xl font-semibold">4. Run a fair comparison</h2><p className="mt-2 text-sm text-slate-400">The same dataset is sent to each selected version&apos;s configured Ollama model, one case at a time. Choose 2–4 versions.</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"><label className="block text-sm text-slate-300">Evaluation dataset<select className={inputClass} value={datasetId} onChange={e => setDatasetId(e.target.value)}><option value="">Select dataset…</option>{datasets.map(dataset => <option key={dataset.id} value={dataset.id}>{dataset.name} ({dataset.caseCount} cases)</option>)}</select></label><button className={buttonClass} onClick={() => void runComparison()} disabled={busy || !datasetId || selectedVersions.length < 2}>{busy ? "Running evaluation…" : `Run comparison (${selectedVersions.length}/4)`}</button></div>
           {datasets.length === 0 && <p className="mt-3 text-sm text-amber-300">Create a dataset above before running an evaluation.</p>}
           {selectedVersions.length < 2 && <p className="mt-3 text-xs text-slate-500">Select at least two prompt versions from the version history.</p>}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type Metric = "failure_rate_percent" | "p95_latency_ms" | "failed_runs";
@@ -32,7 +33,10 @@ export default function AlertsPage() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not connect to FaultLens."); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   async function createRule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setResults(null);
@@ -71,7 +75,7 @@ export default function AlertsPage() {
   return <main className="min-h-screen bg-slate-950 px-5 py-8 text-slate-100 sm:px-8 lg:px-12">
     <div className="mx-auto max-w-6xl">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
-        <div><a href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</a><p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-violet-300">FaultLens · Phase 6</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Reliability alerts</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Define reliability thresholds and evaluate recent AI-run metadata to identify failure spikes and slow responses.</p></div>
+        <div><Link href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</Link><p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-violet-300">FaultLens · Phase 6</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Reliability alerts</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Define reliability thresholds and evaluate recent AI-run metadata to identify failure spikes and slow responses.</p></div>
         <div className="flex gap-2"><button className="rounded-lg border border-slate-700 px-4 py-2.5 text-sm hover:border-violet-400" onClick={() => void load()} disabled={loading || busy}>↻ Refresh rules</button><button className={button} onClick={() => void evaluate()} disabled={busy || rules.every(rule => !rule.enabled)}>{busy ? "Working…" : "Evaluate enabled rules"}</button></div>
       </header>
       <div className="mb-6 rounded-xl border border-amber-900/70 bg-amber-950/30 p-4 text-sm leading-6 text-amber-100/90"><strong>On-demand evaluation only.</strong> These rules do not run continuously and do not send email, Slack, or other notifications. No runs in a time window is shown as insufficient data, not as healthy.</div>
@@ -91,7 +95,7 @@ export default function AlertsPage() {
         <section className={panel}>
           <div className="flex items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">Configured rules</h2><p className="mt-2 text-sm text-slate-400">{rules.length} rule(s) · up to 100 displayed</p></div><span className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400">{rules.filter(r => r.enabled).length} enabled</span></div>
           {loading ? <p className="mt-6 text-sm text-slate-400">Loading rules…</p> : rules.length === 0 ? <p className="mt-6 rounded-xl border border-dashed border-slate-700 p-6 text-sm text-slate-500">No rules yet. Create your first reliability rule.</p> : <div className="mt-5 space-y-3">{rules.map(rule => { const result = resultById.get(rule.id); return <article key={rule.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-semibold">{rule.name}</h3><p className="mt-1 text-xs text-slate-500">{metricName[rule.metric]} ≥ {rule.threshold} · last {rule.windowMinutes} min</p></div><button className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs hover:border-violet-400" onClick={() => void toggle(rule)} disabled={busy}>{rule.enabled ? "Disable" : "Enable"}</button></div><div className="mt-3 flex flex-wrap items-center gap-2">{result ? <><span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${result.status === "triggered" ? "border-rose-800 bg-rose-950/50 text-rose-300" : result.status === "normal" ? "border-emerald-800 bg-emerald-950/40 text-emerald-300" : "border-amber-800 bg-amber-950/40 text-amber-300"}`}>{result.status.replace("_", " ")}</span><span className="text-xs text-slate-400">Observed: {showValue(rule.metric, result.observedValue)} · {result.sampleCount} run(s)</span></> : <span className="text-xs text-slate-600">Run evaluation to check current status.</span>}</div>{result && <p className="mt-2 text-xs leading-5 text-slate-400">{result.message}</p>}</article>; })}</div>}
-          {results && <p className="mt-4 text-[11px] text-slate-600">Evaluated at {new Date(results[0]?.evaluatedAt ?? Date.now()).toLocaleString()}. Results are a snapshot and are not saved as alert history.</p>}
+          {results?.[0]?.evaluatedAt && <p className="mt-4 text-[11px] text-slate-600">Evaluated at {new Date(results[0].evaluatedAt).toLocaleString()}. Results are a snapshot and are not saved as alert history.</p>}
         </section>
       </div>
       <footer className="mt-8 border-t border-slate-800 pt-4 text-xs leading-5 text-slate-600">FaultLens · Metadata-only alerts. This MVP has no authentication or external notification delivery; do not expose it publicly without adding access controls.</footer>
