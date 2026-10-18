@@ -88,7 +88,15 @@ export class AlertsService {
     const rulesResult = await this.database.query<AlertRuleRow>(
       'SELECT id, name, metric, threshold, window_minutes, enabled, created_at, updated_at FROM alert_rules WHERE enabled = TRUE ORDER BY created_at DESC LIMIT 100',
     );
-    const alerts = [];
+    const alerts: Array<{
+      rule: ReturnType<typeof toRule>;
+      status: 'insufficient_data' | 'triggered' | 'normal';
+      observedValue: number | null;
+      sampleCount: number;
+      failedRuns: number;
+      evaluatedAt: string;
+      message: string;
+    }> = [];
     for (const rule of rulesResult.rows) {
       const metricResult = await this.database.query<MetricRow>(
         `SELECT COUNT(*)::text AS sample_count,
