@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type PromptVersion = { id: string; version: number; template: string; created_at: string };
+type EvalCase = { id: string; input: string; expected_output: string };
 type Prompt = { id: string; name: string; model: string; versions: PromptVersion[] };
 type Dataset = { id: string; name: string; description: string; caseCount: number; cases: EvalCase[] };
 type ResultSummary = {
