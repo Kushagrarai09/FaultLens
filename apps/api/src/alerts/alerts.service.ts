@@ -21,7 +21,18 @@ const positiveNumber = (value: unknown, field: string): number => {
   }
   return number;
 };
-const toRule = (row: AlertRuleRow) => ({
+export interface AlertRuleDto {
+  id: string;
+  name: string;
+  metric: AlertMetric;
+  threshold: number;
+  windowMinutes: number;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const toRule = (row: AlertRuleRow): AlertRuleDto => ({
   id: row.id, name: row.name, metric: row.metric, threshold: Number(row.threshold),
   windowMinutes: row.window_minutes, enabled: row.enabled,
   createdAt: row.created_at, updatedAt: row.updated_at,
@@ -89,7 +100,7 @@ export class AlertsService {
       'SELECT id, name, metric, threshold, window_minutes, enabled, created_at, updated_at FROM alert_rules WHERE enabled = TRUE ORDER BY created_at DESC LIMIT 100',
     );
     const alerts: Array<{
-      rule: ReturnType<typeof toRule>;
+      rule: AlertRuleDto;
       status: 'insufficient_data' | 'triggered' | 'normal';
       observedValue: number | null;
       sampleCount: number;
