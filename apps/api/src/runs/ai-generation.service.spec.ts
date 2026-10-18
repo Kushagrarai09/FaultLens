@@ -68,7 +68,7 @@ describe('AiGenerationService', () => {
 
   it('marks invalid or absent provider usage counts as unknown', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      response: 'Response without usage counts', done: true, prompt_eval_count: -1, eval_count: 'not-a-number',
+      response: 'Response without usage counts', done: true, prompt_eval_count: 2_147_483_648, eval_count: 'not-a-number',
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
     await service.generate({ model: 'qwen2.5:3b', prompt: 'test' });
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ inputTokens: null, outputTokens: null }));
