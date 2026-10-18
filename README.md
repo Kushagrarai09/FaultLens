@@ -95,11 +95,13 @@ To keep the first release manageable, the MVP will not start with multiple provi
 ## Privacy and reliability principles
 
 - Never commit API keys, credentials, or other secrets.
-- Do not store raw prompts or model responses by default; make sensitive-content capture an explicit, documented choice if added later.
+- AI generation stores run metadata only; the generation prompt and returned response are not written to `ai_runs`.
+- Prompt templates and evaluation datasets/cases are stored intentionally for repeatable evaluation. Do not enter personal, customer, or confidential data unless you are comfortable storing it in the configured PostgreSQL database.
 - Validate incoming data and sanitize errors before storing or displaying them.
 - Treat missing token usage or pricing as unknown rather than silently recording zero.
+- The current app has no authentication or workspace authorization. Do not expose it publicly until access controls and abuse protections are implemented.
 - Test important success and failure paths, not just the happy path.
-- Do not describe a feature as implemented until it has been verified.
+- Do not describe a feature as verified until CI or runtime evidence confirms it.
 
 ## Repository layout
 
