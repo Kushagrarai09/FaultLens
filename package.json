@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Production failure investigation and reliability platform",
-  "packageManager": "pnpm@10",
+  "packageManager": "pnpm@10.34.7",
   "scripts": {
     "dev": "pnpm --parallel --filter web --filter api dev",
     "build": "pnpm -r build",
