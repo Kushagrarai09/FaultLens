@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type ModelAnalytics = {
@@ -58,7 +59,8 @@ export default function AnalyticsPage() {
   const [error, setError] = useState("");
 
   const load = useCallback(async (quiet = false) => {
-    quiet ? setRefreshing(true) : setLoading(true);
+    if (quiet) setRefreshing(true);
+    else setLoading(true);
     setError("");
     try {
       const response = await fetch("/api/analytics/summary", { cache: "no-store" });
@@ -73,13 +75,16 @@ export default function AnalyticsPage() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   return <main className="min-h-screen bg-slate-950 px-5 py-8 text-slate-100 sm:px-8 lg:px-12">
     <div className="mx-auto max-w-7xl">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <a href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</a>
+          <Link href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</Link>
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-violet-300">FaultLens · Phase 4</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Usage & performance analytics</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">All-time aggregates from stored run metadata, including latency percentiles and known token usage.</p>
