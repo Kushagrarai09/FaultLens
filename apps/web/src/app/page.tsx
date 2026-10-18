@@ -82,7 +82,7 @@ export default function Home() {
       <nav className="navigation" aria-label="Main navigation">
         <a className="nav-item active" href="#overview"><span className="nav-icon">◫</span>Overview</a>
         <a className="nav-item" href="#runs"><span className="nav-icon">≋</span>AI runs<span className="nav-count">{runs.length}</span></a>
-        <span className="nav-item disabled"><span className="nav-icon">⌁</span>Prompt evaluations<span className="soon">SOON</span></span>
+        <a className="nav-item" href="/evaluations"><span className="nav-icon">⌁</span>Prompt evaluations<span className="nav-count">NEW</span></a>
         <span className="nav-item disabled"><span className="nav-icon">◷</span>Cost analytics<span className="soon">SOON</span></span>
       </nav>
       <div className="sidebar-bottom">
