@@ -29,6 +29,7 @@ describe('parseCreateAiRunInput', () => {
       { ...validInput, durationMs: 1.5 },
       { ...validInput, inputTokens: -1 },
       { ...validInput, outputTokens: 1.5 },
+      { ...validInput, inputTokens: 2_147_483_648 },
     ]) expect(() => parseCreateAiRunInput(bad)).toThrow(BadRequestException);
   });
 
