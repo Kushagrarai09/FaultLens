@@ -135,7 +135,7 @@ export default function AnalyticsPage() {
 
         <section className="mt-6 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70">
           <div className="border-b border-slate-800 p-5"><h2 className="text-lg font-semibold">Performance by model</h2><p className="mt-1 text-sm text-slate-400">Top 20 provider/model groups by request volume.</p></div>
-          {data.byModel.length === 0 ? <div className="p-10 text-center"><p className="font-medium">No runs recorded yet</p><p className="mt-2 text-sm text-slate-400">Create a demo run or send a request from the Ollama playground, then refresh this page.</p><a className="mt-4 inline-block text-sm text-violet-300 hover:text-violet-200" href="/">Go to overview →</a></div> :
+          {data.byModel.length === 0 ? <div className="p-10 text-center"><p className="font-medium">No runs recorded yet</p><p className="mt-2 text-sm text-slate-400">Create a demo run or send a request from the Ollama playground, then refresh this page.</p><Link className="mt-4 inline-block text-sm text-violet-300 hover:text-violet-200" href="/">Go to overview →</Link></div> :
             <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-slate-950/60 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Provider / model</th><th className="px-5 py-3">Runs</th><th className="px-5 py-3">Success</th><th className="px-5 py-3">Avg latency</th><th className="px-5 py-3">P95 latency</th><th className="px-5 py-3">Known tokens</th></tr></thead>
               <tbody>{data.byModel.map(item => <tr key={`${item.provider}:${item.model}`} className="border-t border-slate-800 text-slate-300">
