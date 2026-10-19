@@ -63,7 +63,7 @@ export class AiGenerationService {
     }
 
     if (typeof result.response !== 'string' || result.done !== true) {
-      const run = await this.saveFailure(input.model, startedAt, startedMs, 'OLLAMA_INVALID_RESPONSE');
+      const run = await this.saveFailure(input.model, startedAt, startedMs, 'OLLAMA_INVALID_RESPONSE', workspaceId);
       throw new BadGatewayException({
         message: 'Ollama returned an incomplete or invalid generation result.',
         runId: run.id,
