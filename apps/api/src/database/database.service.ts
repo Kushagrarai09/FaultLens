@@ -3,12 +3,11 @@ import {
   OnModuleDestroy,
   ServiceUnavailableException,
   ConflictException,
-  type OnModuleInit,
 } from '@nestjs/common';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 
 @Injectable()
-export class DatabaseService implements OnModuleDestroy, OnModuleInit {
+export class DatabaseService implements OnModuleDestroy {
   private readonly pool: Pool | null;
 
   constructor() {
@@ -23,12 +22,6 @@ export class DatabaseService implements OnModuleDestroy, OnModuleInit {
           statement_timeout: Number(process.env.PG_STATEMENT_TIMEOUT_MS ?? 5_000),
         })
       : null;
-  }
-
-  async onModuleInit(): Promise<void> {
-    if (!this.pool) return;
-    // Fail fast on bad DB configuration instead of serving a half-working API.
-    await this.healthCheck();
   }
 
   async healthCheck(): Promise<void> {
