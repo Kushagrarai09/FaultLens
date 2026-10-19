@@ -6,7 +6,6 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
-import { loadApiConfiguration } from '../common/configuration.js';
 
 @Injectable()
 export class DatabaseService implements OnModuleDestroy, OnModuleInit {
@@ -14,7 +13,6 @@ export class DatabaseService implements OnModuleDestroy, OnModuleInit {
 
   constructor() {
     const connectionString = process.env.DATABASE_URL;
-    const config = loadApiConfiguration();
     this.pool = connectionString
       ? new Pool({
           connectionString,
