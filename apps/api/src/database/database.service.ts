@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   OnModuleDestroy,
   ServiceUnavailableException,
@@ -28,7 +29,11 @@ export class DatabaseService implements OnModuleDestroy {
 
     try {
       return await this.pool.query<T>(text, values);
-    } catch {
+    } catch (error) {
+      // Do not expose PostgreSQL's detail text or constraint names to callers.
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
+        throw new ConflictException('A resource with these details already exists.');
+      }
       throw new ServiceUnavailableException(
         'The database request failed. Check the database connection and migration.',
       );
