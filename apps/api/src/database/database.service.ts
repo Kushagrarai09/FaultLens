@@ -11,17 +11,16 @@ export class DatabaseService implements OnModuleDestroy {
   private readonly pool: Pool | null;
 
   constructor() {
-    const connectionString = process.env.DATABASE_URL;
-    this.pool = connectionString
-      ? new Pool({
-          connectionString,
-          max: Number(process.env.PG_POOL_MAX ?? 10),
-          connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS ?? 2_000),
-          idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS ?? 30_000),
-          query_timeout: Number(process.env.PG_QUERY_TIMEOUT_MS ?? 5_000),
-          statement_timeout: Number(process.env.PG_STATEMENT_TIMEOUT_MS ?? 5_000),
-        })
-      : null;
+    const config = loadRuntimeConfig();
+    const connectionString = config.databaseUrl;
+    this.pool = new Pool({
+      connectionString,
+      max: config.pgPoolMax,
+      connectionTimeoutMillis: config.pgConnectTimeoutMs,
+      idleTimeoutMillis: config.pgIdleTimeoutMs,
+      query_timeout: config.pgQueryTimeoutMs,
+      statement_timeout: config.pgStatementTimeoutMs,
+    });
   }
 
   async healthCheck(): Promise<void> {
@@ -29,7 +28,7 @@ export class DatabaseService implements OnModuleDestroy {
       throw new ServiceUnavailableException('Database is not configured. Set DATABASE_URL.');
     }
     try {
-      await this.pool.query({ text: 'SELECT 1', query_timeout: Number(process.env.PG_HEALTH_TIMEOUT_MS ?? 1_000) });
+      await this.pool.query({ text: 'SELECT 1', query_timeout: loadRuntimeConfig().pgHealthTimeoutMs });
     } catch {
       throw new ServiceUnavailableException('PostgreSQL health check failed.');
     }
