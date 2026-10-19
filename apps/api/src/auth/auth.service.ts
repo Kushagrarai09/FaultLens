@@ -42,7 +42,7 @@ const normalizeEmail = (value: unknown): string => {
   if (typeof value !== 'string') throw new BadRequestException('A valid email address is required.');
   const email = value.trim().toLowerCase();
   if (email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new ConflictException('A valid email address is required.');
+    throw new BadRequestException('A valid email address is required.');
   }
   return email;
 };
