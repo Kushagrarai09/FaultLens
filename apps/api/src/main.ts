@@ -5,6 +5,7 @@ import { AppModule } from './app.module.js';
 import { StructuredLogger } from './observability/structured-logger.js';
 import { HttpExceptionFilter } from './observability/http-exception.filter.js';
 import { requestLoggingMiddleware } from './observability/request-logging.middleware.js';
+import { RequestBodyErrorMiddleware } from './observability/request-body-error.middleware.js';
 import { requestTimeoutMiddleware } from './observability/request-timeout.middleware.js';
 import { ApiRateLimitGuard } from './security/api-rate-limit.guard.js';
 import { loadRuntimeConfig } from './config/runtime-config.js';
