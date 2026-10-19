@@ -4,6 +4,10 @@ import { loadRuntimeConfig } from './runtime-config.js';
 const baseEnv = () => ({
   AUTH_TOKEN_SECRET: 'random-test-secret-that-is-long-enough-to-pass-validation-value',
   DATABASE_URL: 'postgresql://faultlens:password@localhost:5432/faultlens_test',
+  it('rejects an empty DATABASE_URL', () => {
+    expect(() => loadRuntimeConfig({ ...baseEnv(), DATABASE_URL: '' })).toThrow(/DATABASE_URL/);
+  });
+
 });
 
 describe('loadRuntimeConfig', () => {
