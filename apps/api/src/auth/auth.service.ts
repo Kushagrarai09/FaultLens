@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -269,7 +268,7 @@ export class AuthService {
     value: unknown,
   ) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      throw new ConflictException('Request body must be a JSON object.');
+      throw new BadRequestException('Request body must be a JSON object.');
     }
     const body = value as Record<string, unknown>;
     const email = normalizeEmail(body.email);
