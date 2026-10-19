@@ -4,7 +4,7 @@
 
 FaultLens is being built to help developers understand how AI-powered features behave: which requests succeed or fail, how long they take, how much token usage they incur, and how prompt changes affect quality, latency, and estimated cost.
 
-> **Project status:** Feature implementation exists on stacked feature branches and is not yet release-verified. CI, migrations, model generation, and browser workflows must pass on the integrated branch before features should be described as verified. The application is not production-ready: authentication and workspace authorization are not implemented.
+> **Project status:** Feature implementation exists on stacked feature branches and is not yet release-verified. CI, migrations, model generation, and browser workflows must pass on the integrated branch before features should be described as verified. The application is not production-ready. The API now has initial bearer-token authentication and workspace-scoped authorization on protected data routes, but it still needs independent security review, frontend sign-in integration, abuse protections, and full CI/runtime verification.
 
 ## Why FaultLens?
 
@@ -99,7 +99,7 @@ To keep the first release manageable, the MVP will not start with multiple provi
 - Prompt templates and evaluation datasets/cases are stored intentionally for repeatable evaluation. Do not enter personal, customer, or confidential data unless you are comfortable storing it in the configured PostgreSQL database.
 - Validate incoming data and sanitize errors before storing or displaying them.
 - Treat missing token usage or pricing as unknown rather than silently recording zero.
-- The current app has no authentication or workspace authorization. Do not expose it publicly until access controls and abuse protections are implemented.
+- API authentication and workspace-level data scoping have been added on the Phase 3 security branch. They have not yet been independently reviewed or verified by a completed CI run; do not expose the app publicly.
 - Test important success and failure paths, not just the happy path.
 - Do not describe a feature as verified until CI or runtime evidence confirms it.
 
@@ -146,7 +146,17 @@ The API stores metadata only; raw prompts and model responses are not accepted. 
 
 This feature is under implementation and must pass local build, database, and API tests before it is considered complete.
 
-## Phase 2 dashboard (in progress)\n\nThe dashboard in the Phase 2 feature branch includes recent-run metrics, a reliability snapshot, searchable and filterable run history, refresh/error/empty states, and a synthetic demo-run button. The Next.js route handler proxies requests to the NestJS API. Run the API on port 3001 and the web app on port 3000; see [the Phase 2 guide](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-2-observability-dashboard/docs/roadmap/PHASE-2.md). Metrics describe only the latest 50 records. No prompt/response content or estimated costs are shown. This phase still needs local build and browser verification.\n\n## Phase 3 local model integration (in progress)\n\nPhase 3 adds an Ollama-backed generation endpoint and a local-model playground. Real generations return their response to the browser while persisting only run metadata (provider, model, status, duration, available token counts, and sanitized error code). Prompts and responses are not written to the FaultLens database. See [the Phase 3 guide](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-3-ollama-integration/docs/roadmap/PHASE-3.md). This branch requires Ollama, PostgreSQL, and local build/test/browser verification before merge.\n\n## Contributing and tracking progress
+## Phase 2 dashboard (in progress)\n\nThe dashboard in the Phase 2 feature branch includes recent-run metrics, a reliability snapshot, searchable and filterable run history, refresh/error/empty states, and a synthetic demo-run button. The Next.js route handler proxies requests to the NestJS API. Run the API on port 3001 and the web app on port 3000; see [the Phase 2 guide](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-2-observability-dashboard/docs/roadmap/PHASE-2.md). Metrics describe only the latest 50 records. No prompt/response content or estimated costs are shown. This phase still needs local build and browser verification.\n\n## Phase 3 local model integration (in progress)\n\nPhase 3 adds an Ollama-backed generation endpoint and a local-model playground. Real generations return their response to the browser while persisting only run metadata (provider, model, status, duration, available token counts, and sanitized error code). Prompts and responses are not written to the FaultLens database. See [the Phase 3 guide](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-3-ollama-integration/docs/roadmap/PHASE-3.md). This branch requires Ollama, PostgreSQL, and local build/test/browser verification before merge.\n\n## Phase 3 — Authentication and workspace authorization (in progress)
+
+The Phase 3 branch introduces email/password registration and login, one-hour signed bearer access tokens, user/workspace membership with owner/admin/member/viewer roles, and workspace-scoped API queries for runs, analytics, prompt versions, datasets, evaluations, and alert rules. Existing records are moved into a legacy workspace with no members instead of being exposed to new users.
+
+- Apply `apps/api/migrations/004_create_auth_workspaces.sql` after migrations 001–003.
+- Set a unique `AUTH_TOKEN_SECRET` of at least 32 characters.
+- Protected API endpoints require `Authorization: Bearer <accessToken>`.
+- The integration suite adds cross-workspace and role checks, but Phase 3 is not complete until CI passes and the implementation is reviewed.
+- The Next.js UI does not yet provide a full login experience. Rate limiting, account recovery, email verification, audit logging, and a formal security review are also outstanding.
+
+## Contributing and tracking progress
 
 Development is organized through repository issues and the implementation roadmap:
 
@@ -208,4 +218,4 @@ Phase 7 adds GitHub Actions checks, an optional synthetic demo-run seed, an envi
 - Optional synthetic demo data: `apps/api/seeds/demo_runs.sql`
 - Environment template: `.env.example`
 
-This phase has not yet passed remote CI or local build, database, and browser verification. The application also lacks authentication/workspace authorization, so do not expose it publicly yet.
+This phase has not yet passed remote CI or local build, database, and browser verification. Authentication and workspace checks now exist in the Phase 3 branch, but remain unreviewed and need a UI login flow and more production hardening. Do not expose the app publicly yet.
