@@ -11,15 +11,15 @@ describe('EvaluationsService', () => {
   });
 
   it('validates prompt and dataset inputs before database writes', async () => {
-    await expect(service.createPrompt({ name: '', model: 'qwen2.5:3b', template: 'Hi {{input}}' }))
+    await expect(service.createPrompt({ name: '', model: 'qwen2.5:3b', template: 'Hi {{input}}' }, 'workspace-uuid'))
       .rejects.toThrow(/name must be a non-empty string/);
-    await expect(service.createDataset({ name: 'empty', cases: [] }))
+    await expect(service.createDataset({ name: 'empty', cases: [] }, 'workspace-uuid'))
       .rejects.toThrow(/between 1 and 50/);
     expect(query).not.toHaveBeenCalled();
   });
 
   it('rejects comparisons with fewer than two prompt versions', async () => {
-    await expect(service.runComparison({ datasetId: 'c2a1f93b-9c72-4e4b-98b4-57d4bc8e30d9', promptVersionIds: [] }))
+    await expect(service.runComparison({ datasetId: 'c2a1f93b-9c72-4e4b-98b4-57d4bc8e30d9', promptVersionIds: [] }, 'workspace-uuid'))
       .rejects.toThrow(/between 2 and 4/);
     expect(query).not.toHaveBeenCalled();
   });
