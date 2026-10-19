@@ -50,6 +50,25 @@ describe('DatabaseService', () => {
     expect(poolEnd).toHaveBeenCalledOnce();
   });
 
+  it('checks PostgreSQL connectivity with a bounded SELECT 1 query', async () => {
+    process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/test';
+    poolQuery.mockResolvedValueOnce({ rows: [{ '?column?': 1 }] });
+    const service = new DatabaseService();
+    await expect(service.healthCheck()).resolves.toBeUndefined();
+    expect(poolQuery).toHaveBeenCalledWith(expect.objectContaining({
+      text: 'SELECT 1',
+      query_timeout: 1_000,
+    }));
+  });
+
+  it('converts connectivity failures into a sanitized service-unavailable error', async () => {
+    process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/test';
+    poolQuery.mockRejectedValueOnce(new Error('private socket or password details'));
+    const service = new DatabaseService();
+    await expect(service.healthCheck()).rejects.toThrow('PostgreSQL health check failed.');
+    await expect(service.healthCheck()).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
   it('maps database failures to a sanitized 503 without exposing query or credentials', async () => {
     process.env.DATABASE_URL = 'postgresql://user:secret-password@localhost:5432/test';
     poolQuery.mockRejectedValue(new Error('password=secret-password private_table connection refused'));
