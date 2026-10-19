@@ -96,13 +96,13 @@ The prompt-comparison integration test deliberately points Ollama to a closed lo
 
 ## API hardening configuration
 
-The API boot validates `AUTH_TOKEN_SECRET`, `PORT`, HTTP request timeout settings and configured service URLs. It refuses to start if a required setting is invalid.
+The API boot validates `AUTH_TOKEN_SECRET`, `DATABASE_URL`, `PORT`, request timeout and body-size settings, allowed CORS origins, rate limits, dependency URLs, and PostgreSQL timeout/pool settings. It refuses to start if a required setting is invalid.
 
 | Setting | Default | Purpose |
 |---|---:|---|
-| `REQUEST_BODY_LIMIT` | `256kb` | JSON and URL-encoded body limit |
-| `HTTP_REQUEST_TIMEOUT_MS` | `65000` | Server request timeout |
-| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated exact allowed origins |
+| `API_BODY_LIMIT_BYTES` | `262144` | JSON and URL-encoded body limit |
+| `API_REQUEST_TIMEOUT_MS` | `65000` | Server request timeout |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Comma-separated exact allowed origins |
 | `API_RATE_LIMIT_MAX` | `120` | Requests per IP/user in the default window |
 | `API_RATE_LIMIT_WINDOW_MS` | `60000` | Default rate window |
 | `AUTH_RATE_LIMIT_MAX` | `10` | Login/registration attempts in the auth window |
@@ -114,9 +114,9 @@ The API boot validates `AUTH_TOKEN_SECRET`, `PORT`, HTTP request timeout setting
 | `PG_STATEMENT_TIMEOUT_MS` | `5000` | PostgreSQL statement timeout |
 | `OLLAMA_HEALTH_TIMEOUT_MS` | `2000` | Ollama health request timeout |
 
-`GET /health/live` is a liveness check that does not contact dependencies. `GET /health/ready` checks PostgreSQL and Ollama and returns HTTP 503 if either dependency is unavailable. Readiness currently requires both dependencies even for application routes that do not generate text.
+`GET /health/live` is a liveness check that does not contact dependencies. `GET /health/ready` checks PostgreSQL and Ollama and returns HTTP 503 if either dependency is unavailable. The process can stay alive when PostgreSQL is down so the probe can distinguish liveness from readiness. Readiness currently requires both dependencies even for application routes that do not generate text.
 
-The application emits single-line JSON logs containing request ID, method, path (without query string), status and duration. Request bodies, credentials, tokens and prompt/response fields are redacted by the logger sanitizer. Generic API errors are returned without stack traces or internal provider/database details. `X-Request-Id` is returned for support and correlation.
+The application emits single-line JSON logs containing request ID, method, path (without query string), status and duration. Request bodies are not logged; inline bearer tokens and credentials embedded in URLs are redacted. Generic API errors are returned without stack traces or internal provider/database details. `X-Request-Id` is returned for support and correlation.
 
 The request-size and server-timeout controls use Express/Node HTTP settings. The in-memory fixed-window rate limiter is suitable only for one API process; it does not share counters between replicas and should be replaced with Redis-backed limiting before horizontally scaled production deployment. Exact CORS origins must be configured for the deployed web origin; do not add wildcards.
 
