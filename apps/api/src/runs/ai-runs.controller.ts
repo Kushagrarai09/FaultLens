@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AccessTokenGuard } from '../auth/access-token.guard.js';
+import { RateLimitGuard } from '../common/rate-limit.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthPrincipal } from '../auth/auth.types.js';
 import { WorkspaceRoles } from '../auth/roles.decorator.js';
@@ -18,6 +19,7 @@ import { AiRunsService } from './ai-runs.service.js';
 import { parseCreateAiRunInput } from './ai-run.validation.js';
 
 @Controller('api/runs')
+@UseGuards(RateLimitGuard)
 @UseGuards(AccessTokenGuard, WorkspaceRolesGuard)
 export class AiRunsController {
   constructor(private readonly aiRunsService: AiRunsService) {}
