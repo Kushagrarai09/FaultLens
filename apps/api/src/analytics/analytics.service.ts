@@ -37,7 +37,7 @@ const nullableNumber = (value: string | number | null | undefined): number | nul
 export class AnalyticsService {
   constructor(private readonly database: DatabaseService) {}
 
-  async getSummary() {
+  async getSummary(workspaceId: string) {
     const [summaryResult, modelResult] = await Promise.all([
       this.database.query<SummaryRow>(`
         SELECT
@@ -53,7 +53,8 @@ export class AnalyticsService {
           COUNT(output_tokens)::text AS runs_with_output_tokens,
           COUNT(DISTINCT model)::text AS distinct_models
         FROM ai_runs
-      `),
+        WHERE workspace_id = $1
+      `, [workspaceId]),
       this.database.query<ModelRow>(`
         SELECT
           provider,
@@ -66,10 +67,11 @@ export class AnalyticsService {
           SUM(input_tokens)::text AS input_tokens,
           SUM(output_tokens)::text AS output_tokens
         FROM ai_runs
+        WHERE workspace_id = $1
         GROUP BY provider, model
         ORDER BY COUNT(*) DESC, provider ASC, model ASC
         LIMIT 20
-      `),
+      `, [workspaceId]),
     ]);
 
     const row = summaryResult.rows[0];
@@ -81,7 +83,7 @@ export class AnalyticsService {
 
     return {
       generatedAt: new Date().toISOString(),
-      scope: 'all_time',
+      scope: 'current_workspace',
       totals: {
         totalRuns,
         successfulRuns,
