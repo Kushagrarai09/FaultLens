@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,8 +9,7 @@ const migrationFiles = [
   '002_create_prompt_evaluations.sql',
   '003_create_alert_rules.sql',
 ] as const;
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const migrationDir = path.join(rootDir, 'migrations');
+const migrationDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../migrations');
 
 const assertTestDatabase = (connectionString: string) => {
   const parsed = new URL(connectionString);
@@ -21,56 +21,52 @@ const assertTestDatabase = (connectionString: string) => {
   }
 };
 
-const applyMigrations = async (pool: Pool) => {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS faultlens_schema_migrations (
-      filename TEXT PRIMARY KEY,
-      checksum TEXT NOT NULL,
-      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  for (const filename of migrationFiles) {
-    const sql = await readFile(path.join(migrationDir, filename), 'utf8');
-    const checksum = await import('node:crypto').then(({ createHash }) =>
-      createHash('sha256').update(sql).digest('hex'),
-    );
-    const existing = await pool.query(
-      'SELECT checksum FROM faultlens_schema_migrations WHERE filename = $1',
-      [filename],
-    );
-    if (existing.rows[0]) {
-      if (existing.rows[0].checksum !== checksum) {
-        throw new Error(`Migration checksum changed after application: ${filename}`);
-      }
-      continue;
-    }
-
-    await pool.query('BEGIN');
-    try {
-      await pool.query(sql);
-      await pool.query(
-        'INSERT INTO faultlens_schema_migrations(filename, checksum) VALUES ($1, $2)',
-        [filename, checksum],
-      );
-      await pool.query('COMMIT');
-    } catch (error) {
-      await pool.query('ROLLBACK');
-      throw error;
-    }
-  }
-};
-
-const main = async () => {
+const run = async () => {
   const connectionString = process.env.TEST_DATABASE_URL;
-  if (!connectionString) {
-    throw new Error('Set TEST_DATABASE_URL to a disposable PostgreSQL test database.');
-  }
+  if (!connectionString) throw new Error('Set TEST_DATABASE_URL to a disposable PostgreSQL test database.');
   assertTestDatabase(connectionString);
+
   const pool = new Pool({ connectionString, max: 2 });
   try {
     await pool.query('SELECT 1');
-    await applyMigrations(pool);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS faultlens_schema_migrations (
+        filename TEXT PRIMARY KEY,
+        checksum TEXT NOT NULL,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    for (const filename of migrationFiles) {
+      const sql = await readFile(path.join(migrationDir, filename), 'utf8');
+      const checksum = createHash('sha256').update(sql).digest('hex');
+      const old = await pool.query(
+        'SELECT checksum FROM faultlens_schema_migrations WHERE filename = $1',
+        [filename],
+      );
+      if (old.rows[0]) {
+        if (old.rows[0].checksum !== checksum) {
+          throw new Error(`Applied migration checksum mismatch: ${filename}`);
+        }
+        continue;
+      }
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(sql);
+        await client.query(
+          'INSERT INTO faultlens_schema_migrations(filename, checksum) VALUES ($1, $2)',
+          [filename, checksum],
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
     const requiredTables = [
       'ai_runs', 'prompt_templates', 'prompt_versions', 'evaluation_datasets',
       'evaluation_cases', 'evaluation_runs', 'evaluation_results', 'alert_rules',
@@ -79,13 +75,13 @@ const main = async () => {
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
     );
-    const found = new Set(result.rows.map((row: { table_name: string }) => row.table_name));
-    const missing = requiredTables.filter((table) => !found.has(table));
+    const existing = new Set(result.rows.map((row: { table_name: string }) => row.table_name));
+    const missing = requiredTables.filter((table) => !existing.has(table));
     if (missing.length) throw new Error(`Migration validation failed; missing tables: ${missing.join(', ')}`);
-    console.log(`PostgreSQL test schema is ready. Validated ${requiredTables.length} required tables.`);
+    console.log(`PostgreSQL test schema validated: ${requiredTables.length} required tables.`);
   } finally {
     await pool.end();
   }
 };
 
-await main();
+await run();
