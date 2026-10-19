@@ -30,28 +30,29 @@ interface OllamaResult {
 export class EvaluationsService {
   constructor(private readonly database: DatabaseService) {}
 
-  async listPrompts() {
+  async listPrompts(workspaceId: string) {
     const result = await this.database.query<DbRow & { id: string; name: string; model: string; created_at: Date }>(
-      'SELECT id, name, model, created_at FROM prompt_templates ORDER BY created_at DESC LIMIT 100',
+      'SELECT id, name, model, created_at FROM prompt_templates WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT 100',
+      [workspaceId],
     );
     const prompts = await Promise.all(result.rows.map(async (prompt) => {
       const versions = await this.database.query<DbRow & { id: string; version: number; template: string; created_at: Date }>(
-        'SELECT id, version, template, created_at FROM prompt_versions WHERE prompt_id = $1 ORDER BY version DESC',
-        [prompt.id],
+        'SELECT v.id, v.version, v.template, v.created_at FROM prompt_versions v JOIN prompt_templates p ON p.id = v.prompt_id WHERE v.prompt_id = $1 AND p.workspace_id = $2 ORDER BY v.version DESC',
+        [prompt.id, workspaceId],
       );
       return { ...prompt, versions: versions.rows };
     }));
     return { data: prompts };
   }
 
-  async createPrompt(value: unknown) {
+  async createPrompt(value: unknown, workspaceId: string) {
     if (!isRecord(value)) throw new BadRequestException('Request body must be a JSON object.');
     const name = text(value.name, 'name', 120);
     const model = text(value.model, 'model', 160);
     const template = text(value.template, 'template', 12000);
     const result = await this.database.query<DbRow & { id: string; name: string; model: string; created_at: Date }>(
-      'INSERT INTO prompt_templates (name, model) VALUES ($1, $2) RETURNING id, name, model, created_at',
-      [name, model],
+      'INSERT INTO prompt_templates (workspace_id, name, model) VALUES ($1, $2, $3) RETURNING id, name, model, created_at',
+      [workspaceId, name, model],
     );
     const prompt = result.rows[0];
     const versionResult = await this.database.query<DbRow & { id: string; prompt_id: string; version: number; template: string; created_at: Date }>(
@@ -61,16 +62,16 @@ export class EvaluationsService {
     return { ...prompt, versions: [versionResult.rows[0]] };
   }
 
-  async createVersion(promptIdValue: unknown, value: unknown) {
+  async createVersion(promptIdValue: unknown, value: unknown, workspaceId: string) {
     const promptId = uuid(promptIdValue, 'promptId');
     if (!isRecord(value)) throw new BadRequestException('Request body must be a JSON object.');
     const template = text(value.template, 'template', 12000);
     const promptResult = await this.database.query<DbRow & { id: string }>(
-      'SELECT id FROM prompt_templates WHERE id = $1', [promptId],
+      'SELECT id FROM prompt_templates WHERE id = $1 AND workspace_id = $2', [promptId, workspaceId],
     );
     if (!promptResult.rows[0]) throw new NotFoundException('Prompt was not found.');
     const versionResult = await this.database.query<DbRow & { next_version: number }>(
-      'SELECT COALESCE(MAX(version), 0) + 1 AS next_version FROM prompt_versions WHERE prompt_id = $1', [promptId],
+      'SELECT COALESCE(MAX(v.version), 0) + 1 AS next_version FROM prompt_versions v JOIN prompt_templates p ON p.id = v.prompt_id WHERE v.prompt_id = $1 AND p.workspace_id = $2', [promptId, workspaceId],
     );
     const version = Number(versionResult.rows[0]?.next_version ?? 1);
     return this.database.query<DbRow & { id: string; prompt_id: string; version: number; template: string; created_at: Date }>(
@@ -79,21 +80,22 @@ export class EvaluationsService {
     ).then((result) => result.rows[0]);
   }
 
-  async listDatasets() {
+  async listDatasets(workspaceId: string) {
     const result = await this.database.query<DbRow & { id: string; name: string; description: string; created_at: Date }>(
-      'SELECT id, name, description, created_at FROM evaluation_datasets ORDER BY created_at DESC LIMIT 100',
+      'SELECT id, name, description, created_at FROM evaluation_datasets WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT 100',
+      [workspaceId],
     );
     const data = await Promise.all(result.rows.map(async (dataset) => {
       const cases = await this.database.query<DbRow & { id: string; input: string; expected_output: string }>(
-        'SELECT id, input, expected_output FROM evaluation_cases WHERE dataset_id = $1 ORDER BY created_at ASC',
-        [dataset.id],
+        'SELECT c.id, c.input, c.expected_output FROM evaluation_cases c JOIN evaluation_datasets d ON d.id = c.dataset_id WHERE c.dataset_id = $1 AND d.workspace_id = $2 ORDER BY c.created_at ASC',
+        [dataset.id, workspaceId],
       );
       return { ...dataset, caseCount: cases.rows.length, cases: cases.rows };
     }));
     return { data };
   }
 
-  async createDataset(value: unknown) {
+  async createDataset(value: unknown, workspaceId: string) {
     if (!isRecord(value)) throw new BadRequestException('Request body must be a JSON object.');
     const name = text(value.name, 'name', 120);
     const description = value.description === undefined ? '' : typeof value.description === 'string' && value.description.length <= 500
@@ -109,8 +111,8 @@ export class EvaluationsService {
       };
     });
     const result = await this.database.query<DbRow & { id: string; name: string; description: string; created_at: Date }>(
-      'INSERT INTO evaluation_datasets (name, description) VALUES ($1, $2) RETURNING id, name, description, created_at',
-      [name, description],
+      'INSERT INTO evaluation_datasets (workspace_id, name, description) VALUES ($1, $2, $3) RETURNING id, name, description, created_at',
+      [workspaceId, name, description],
     );
     const dataset = result.rows[0];
     const inserted = [];
@@ -124,7 +126,7 @@ export class EvaluationsService {
     return { ...dataset, caseCount: inserted.length, cases: inserted };
   }
 
-  async runComparison(value: unknown) {
+  async runComparison(value: unknown, workspaceId: string) {
     if (!isRecord(value)) throw new BadRequestException('Request body must be a JSON object.');
     const datasetId = uuid(value.datasetId, 'datasetId');
     if (!Array.isArray(value.promptVersionIds) || value.promptVersionIds.length < 2 || value.promptVersionIds.length > 4) {
@@ -134,28 +136,28 @@ export class EvaluationsService {
     if (new Set(versionIds).size !== versionIds.length) throw new BadRequestException('Prompt version IDs must be unique.');
 
     const datasetResult = await this.database.query<DbRow & { id: string; name: string }>(
-      'SELECT id, name FROM evaluation_datasets WHERE id = $1', [datasetId],
+      'SELECT id, name FROM evaluation_datasets WHERE id = $1 AND workspace_id = $2', [datasetId, workspaceId],
     );
     if (!datasetResult.rows[0]) throw new NotFoundException('Evaluation dataset was not found.');
     const casesResult = await this.database.query<CaseRow>(
-      'SELECT id, input, expected_output FROM evaluation_cases WHERE dataset_id = $1 ORDER BY created_at ASC LIMIT 50',
-      [datasetId],
+      'SELECT c.id, c.input, c.expected_output FROM evaluation_cases c JOIN evaluation_datasets d ON d.id = c.dataset_id WHERE c.dataset_id = $1 AND d.workspace_id = $2 ORDER BY c.created_at ASC LIMIT 50',
+      [datasetId, workspaceId],
     );
     if (!casesResult.rows.length) throw new BadRequestException('The selected dataset has no test cases.');
 
-    const placeholders = versionIds.map((_, index) => `${index + 1}`).join(', ');
+    const placeholders = versionIds.map((_, index) => `${index + 2}`).join(', ');
     const versionsResult = await this.database.query<VersionRow>(
       `SELECT v.id, v.prompt_id, v.version, v.template, v.created_at, p.name AS prompt_name, p.model
        FROM prompt_versions v JOIN prompt_templates p ON p.id = v.prompt_id
-       WHERE v.id IN (${placeholders})`, versionIds,
+       WHERE p.workspace_id = $1 AND v.id IN (${placeholders})`, [workspaceId, ...versionIds],
     );
     const versionsById = new Map(versionsResult.rows.map((row) => [row.id, row]));
     const versions = versionIds.map((id) => versionsById.get(id)).filter((row): row is VersionRow => Boolean(row));
     if (versions.length !== versionIds.length) throw new NotFoundException('One or more prompt versions were not found.');
 
     const evalRun = await this.database.query<DbRow & { id: string }>(
-      'INSERT INTO evaluation_runs (dataset_id, status, case_count) VALUES ($1, $2, $3) RETURNING id',
-      [datasetId, 'partial', casesResult.rows.length * versions.length],
+      'INSERT INTO evaluation_runs (workspace_id, dataset_id, status, case_count) VALUES ($1, $2, $3, $4) RETURNING id',
+      [workspaceId, datasetId, 'partial', casesResult.rows.length * versions.length],
     );
     const evaluationRunId = evalRun.rows[0].id as string;
     const results: Array<Record<string, unknown>> = [];
@@ -230,7 +232,7 @@ export class EvaluationsService {
     });
 
     const finalStatus = failures === 0 ? 'completed' : successes === 0 ? 'failed' : 'partial';
-    await this.database.query('UPDATE evaluation_runs SET status = $1 WHERE id = $2', [finalStatus, evaluationRunId]);
+    await this.database.query('UPDATE evaluation_runs SET status = $1 WHERE id = $2 AND workspace_id = $3', [finalStatus, evaluationRunId, workspaceId]);
     return {
       id: evaluationRunId, dataset: datasetResult.rows[0], status: finalStatus,
       completedCases: successes, failedCases: failures,
@@ -239,15 +241,15 @@ export class EvaluationsService {
     };
   }
 
-  async getEvaluation(idValue: unknown) {
+  async getEvaluation(idValue: unknown, workspaceId: string) {
     const id = uuid(idValue, 'evaluationId');
     const runResult = await this.database.query<DbRow & { id: string; dataset_id: string; status: string; case_count: number; created_at: Date }>(
-      'SELECT id, dataset_id, status, case_count, created_at FROM evaluation_runs WHERE id = $1', [id],
+      'SELECT id, dataset_id, status, case_count, created_at FROM evaluation_runs WHERE id = $1 AND workspace_id = $2', [id, workspaceId],
     );
     if (!runResult.rows[0]) throw new NotFoundException('Evaluation run was not found.');
     const resultRows = await this.database.query<DbRow>(
-      'SELECT prompt_version_id, model, status, score, duration_ms, input_tokens, output_tokens, error_code, created_at FROM evaluation_results WHERE evaluation_run_id = $1 ORDER BY created_at ASC',
-      [id],
+      'SELECT er.prompt_version_id, er.model, er.status, er.score, er.duration_ms, er.input_tokens, er.output_tokens, er.error_code, er.created_at FROM evaluation_results er JOIN evaluation_runs r ON r.id = er.evaluation_run_id WHERE er.evaluation_run_id = $1 AND r.workspace_id = $2 ORDER BY er.created_at ASC',
+      [id, workspaceId],
     );
     return { ...runResult.rows[0], results: resultRows.rows };
   }
