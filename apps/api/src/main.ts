@@ -105,22 +105,27 @@ async function bootstrap() {
     next();
   });
 
-  // Generic error body parser for malformed/oversized JSON, with no stack or submitted data.
+  // Handle errors raised by body parsers before Nest routes are entered.
   app.use((error: unknown, request: Request, response: Response, next: NextFunction) => {
     if (!error) return next();
-    const maybe = error as { type?: string; status?: number };
+    const maybe = error as { type?: string };
     const requestId = (request as Request & { requestId?: string }).requestId ?? null;
     if (maybe.type === 'entity.too.large') {
-      return response.status(413).json({ statusCode: 413, error: 'Payload Too Large', message: 'Request body exceeds the configured limit.', requestId });
+      return response.status(413).json({
+        statusCode: 413, error: 'Payload Too Large',
+        message: 'Request body exceeds the configured limit.', requestId,
+      });
     }
     if (maybe.type === 'entity.parse.failed') {
-      return response.status(400).json({ statusCode: 400, error: 'Bad Request', message: 'Request body must contain valid JSON.', requestId });
+      return response.status(400).json({
+        statusCode: 400, error: 'Bad Request',
+        message: 'Request body must contain valid JSON.', requestId,
+      });
     }
-    return response.status(maybe.status && maybe.status >= 400 ? maybe.status : 500).json({
-      statusCode: maybe.status && maybe.status >= 400 ? maybe.status : 500,
-      error: 'Request Failed',
-      message: maybe.status && maybe.status < 500 ? 'The request could not be processed.' : 'An unexpected error occurred.',
-      requestId,
+    // Unexpected parser/middleware details are intentionally never reflected.
+    return response.status(400).json({
+      statusCode: 400, error: 'Bad Request',
+      message: 'The request could not be processed.', requestId,
     });
   });
 
