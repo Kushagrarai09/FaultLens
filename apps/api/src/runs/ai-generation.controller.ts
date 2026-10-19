@@ -9,8 +9,7 @@ import { AiGenerationService } from './ai-generation.service.js';
 import { parseGenerateAiInput } from './ai-generation.types.js';
 
 @Controller('api/ai')
-@UseGuards(RateLimitGuard)
-@UseGuards(AccessTokenGuard, WorkspaceRolesGuard)
+@UseGuards(AccessTokenGuard, WorkspaceRolesGuard, RateLimitGuard)
 export class AiGenerationController {
   constructor(private readonly aiGenerationService: AiGenerationService) {}
 
