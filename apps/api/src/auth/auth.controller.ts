@@ -1,3 +1,4 @@
+import { RateLimitGuard } from '../common/rate-limit.guard.js';
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AccessTokenGuard } from './access-token.guard.js';
 import { AuthService } from './auth.service.js';
@@ -5,6 +6,7 @@ import { CurrentUser } from './current-user.decorator.js';
 import type { AuthPrincipal } from './auth.types.js';
 
 @Controller('api/auth')
+@UseGuards(RateLimitGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
