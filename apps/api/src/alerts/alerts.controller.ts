@@ -1,22 +1,37 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { AccessTokenGuard } from '../auth/access-token.guard.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { AuthPrincipal } from '../auth/auth.types.js';
+import { WorkspaceRoles } from '../auth/roles.decorator.js';
+import { WorkspaceRolesGuard } from '../auth/workspace-roles.guard.js';
 import { AlertsService } from './alerts.service.js';
 import type { AlertRuleDto } from './alerts.service.js';
 
 @Controller('api/alerts')
+@UseGuards(AccessTokenGuard, WorkspaceRolesGuard)
 export class AlertsController {
   constructor(private readonly alertsService: AlertsService) {}
 
   @Get('rules')
-  listRules(): ReturnType<AlertsService['listRules']> { return this.alertsService.listRules(); }
-
-  @Post('rules')
-  createRule(@Body() body: unknown): Promise<AlertRuleDto> { return this.alertsService.createRule(body); }
-
-  @Patch('rules/:id')
-  updateRule(@Param('id') id: string, @Body() body: unknown): Promise<AlertRuleDto> {
-    return this.alertsService.updateRule(id, body);
+  listRules(@CurrentUser() user: AuthPrincipal): ReturnType<AlertsService['listRules']> {
+    return this.alertsService.listRules(user.workspaceId);
   }
 
+  @WorkspaceRoles('owner', 'admin', 'member')
+  @Post('rules')
+  createRule(@CurrentUser() user: AuthPrincipal, @Body() body: unknown): Promise<AlertRuleDto> {
+    return this.alertsService.createRule(body, user.workspaceId);
+  }
+
+  @WorkspaceRoles('owner', 'admin', 'member')
+  @Patch('rules/:id')
+  updateRule(@CurrentUser() user: AuthPrincipal, @Param('id') id: string, @Body() body: unknown): Promise<AlertRuleDto> {
+    return this.alertsService.updateRule(id, body, user.workspaceId);
+  }
+
+  @WorkspaceRoles('owner', 'admin', 'member')
   @Post('evaluate')
-  evaluate(): ReturnType<AlertsService['evaluate']> { return this.alertsService.evaluate(); }
+  evaluate(@CurrentUser() user: AuthPrincipal): ReturnType<AlertsService['evaluate']> {
+    return this.alertsService.evaluate(user.workspaceId);
+  }
 }
