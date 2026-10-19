@@ -6,10 +6,6 @@ type DependencyHealth = { status: 'ok' } | { status: 'error'; message: string };
 
 @Injectable()
 export class HealthService {
-  private getConfig() {
-    return loadRuntimeConfig();
-  }
-
   constructor(private readonly database: DatabaseService) {}
 
   async checkDatabase(): Promise<DependencyHealth> {
@@ -22,17 +18,40 @@ export class HealthService {
   }
 
   async checkOllama(): Promise<DependencyHealth> {
-    let config: ReturnType<typeof loadRuntimeConfig>;
+    let baseUrl = 'http://localhost:11434';
+    let timeoutMs = 2_000;
     try {
-      config = this.getConfig();
+      const config = loadRuntimeConfig();
+      baseUrl = config.ollamaBaseUrl;
+      timeoutMs = config.ollamaHealthTimeoutMs;
     } catch {
-      return { status: 'error', message: 'Ollama health configuration is invalid.' } as DependencyHealth;
+      // Ollama settings can still be checked even when the database is unconfigured.
+      const configuredUrl = process.env.OLLAMA_BASE_URL;
+      if (configuredUrl) {
+        try {
+          const parsed = new URL(configuredUrl);
+          if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+            return { status: 'error', message: 'Ollama health configuration is invalid.' };
+          }
+          baseUrl = parsed.toString().replace(/\/$/, '');
+        } catch {
+          return { status: 'error', message: 'Ollama health configuration is invalid.' };
+        }
+      }
+      const timeout = process.env.OLLAMA_HEALTH_TIMEOUT_MS;
+      if (timeout !== undefined) {
+        const parsedTimeout = Number(timeout);
+        if (!Number.isSafeInteger(parsedTimeout) || parsedTimeout < 100 || parsedTimeout > 30_000) {
+          return { status: 'error', message: 'Ollama health configuration is invalid.' };
+        }
+        timeoutMs = parsedTimeout;
+      }
     }
-    const baseUrl = config.ollamaBaseUrl;
+
     try {
       const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/tags`, {
         method: 'GET',
-        signal: AbortSignal.timeout(config.ollamaHealthTimeoutMs),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (!response.ok) return { status: 'error', message: 'Ollama returned an unsuccessful health response.' };
       return { status: 'ok' };
@@ -51,5 +70,4 @@ export class HealthService {
       timestamp: new Date().toISOString(),
     };
   }
-
 }
