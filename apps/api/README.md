@@ -61,6 +61,34 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/003_create_alert_
 
 PowerShell can use the same commands if `psql` is installed and `DATABASE_URL` is available as an environment variable. The API currently assumes the schema exists; migrations are not automatically applied on startup. Do not run these against a database containing important data without reviewing the SQL first.
 
+## PostgreSQL integration tests
+
+The database integration suite uses a separate, disposable PostgreSQL database. The runner **refuses to run** if the database name does not contain `test`, `testing`, or `integration`, because the suite truncates its test tables.
+
+Example PowerShell setup (use a dedicated local database called `faultlens_test`):
+
+```powershell
+$env:TEST_DATABASE_URL = "postgresql://faultlens:YOUR_TEST_PASSWORD@localhost:5432/faultlens_test"
+$env:DATABASE_URL = $env:TEST_DATABASE_URL
+
+# Apply the three migrations, verify checksums, and validate the required tables.
+pnpm --filter api db:test:migrate
+
+# Run API integration tests against PostgreSQL using Supertest.
+pnpm --filter api test:integration
+```
+
+Run the same commands with a disposable PostgreSQL instance through Docker or another local PostgreSQL service. Do not point `TEST_DATABASE_URL` at your usual development database or any production database. The integration suite truncates its tables between tests.
+
+The integration checks cover:
+- AI run persistence, history and retrieval.
+- Analytics calculated from persisted token and latency records.
+- Prompt templates/versions and dataset creation, with comparison results persisted even when Ollama is unavailable.
+- Alert-rule persistence and evaluation against recorded runs.
+- A sanitized HTTP 503 response when PostgreSQL is unreachable.
+
+The prompt-comparison integration test deliberately points Ollama to a closed local port; it tests durable error-result storage without requiring a live model. It does not verify successful real-model generation.
+
 ## Start the API
 
 From the repository root:
