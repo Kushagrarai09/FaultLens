@@ -37,6 +37,12 @@ jobs:
       - name: API unit tests
         run: pnpm --filter api test
 
+      - name: API hardening tests
+        run: pnpm --filter api test:hardening
+
+      - name: API lint
+        run: pnpm --filter api lint
+
       - name: API build
         run: pnpm --filter api build
 
