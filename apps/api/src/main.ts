@@ -5,6 +5,7 @@ import { AppModule } from './app.module.js';
 import { StructuredLogger } from './observability/structured-logger.js';
 import { HttpExceptionFilter } from './observability/http-exception.filter.js';
 import { requestLoggingMiddleware } from './observability/request-logging.middleware.js';
+import { requestBodyErrorMiddleware } from './observability/request-body-error.middleware.js';
 import { requestTimeoutMiddleware } from './observability/request-timeout.middleware.js';
 import { ApiRateLimitGuard } from './security/api-rate-limit.guard.js';
 import { loadRuntimeConfig } from './config/runtime-config.js';
@@ -32,30 +33,7 @@ async function bootstrap() {
   express.use(expressModule.urlencoded({ extended: false, limit: config.bodyLimitBytes, parameterLimit: 100 }));
 
   // Sanitize malformed/oversized body errors raised before Nest's route pipeline.
-  express.use((error: unknown, request: Request, response: Response, next: NextFunction) => {
-    if (!error) return next();
-    const type = (error as { type?: string }).type;
-    const requestId = response.getHeader('X-Request-Id') ?? null;
-    if (type === 'entity.too.large') {
-      return response.status(413).json({
-        statusCode: 413,
-        message: 'Request body exceeds the configured size limit.',
-        requestId,
-      });
-    }
-    if (type === 'entity.parse.failed') {
-      return response.status(400).json({
-        statusCode: 400,
-        message: 'Request body must contain valid JSON.',
-        requestId,
-      });
-    }
-    return response.status(400).json({
-      statusCode: 400,
-      message: 'Request is invalid.',
-      requestId,
-    });
-  });
+  express.use(requestBodyErrorMiddleware);
 
   app.enableCors({
     origin: config.allowedOrigins,
