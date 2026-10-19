@@ -23,7 +23,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "db:test:migrate": "node scripts/migrate-test-db.mjs",
     "test:integration": "vitest run --config ./vitest.config.integration.ts",
-    "test:hardening": "vitest run src/common src/health src/database"
+    "test:hardening": "vitest run src/config src/security src/observability src/health src/database"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
