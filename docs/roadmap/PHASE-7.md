@@ -20,8 +20,8 @@ Requirements: Node.js 22, pnpm 10, PostgreSQL, and Ollama for model generation/e
 2. Run `pnpm install`.
 3. Create a PostgreSQL database named `faultlens`.
 4. Set `DATABASE_URL` and `PORT=3001` in the API terminal; set `OLLAMA_BASE_URL=http://localhost:11434` for generation/evaluation.
-5. Apply migrations in order: `001_create_ai_runs.sql`, `002_create_prompt_evaluations.sql`, `003_create_alert_rules.sql`.
-6. Optionally run `apps/api/seeds/demo_runs.sql` on the local development database only.
+5. Apply migrations in order: `001_create_ai_runs.sql`, `002_create_prompt_evaluations.sql`, `003_create_alert_rules.sql`, `004_create_auth_workspaces.sql`.
+6. Optionally run `apps/api/seeds/demo_runs.sql` on a workspace you control, passing `-v workspace_id=<workspace UUID>` to `psql`.
 7. Start Ollama and pull `qwen2.5:3b` (or another model installed locally).
 8. Start API with `pnpm --filter api start:dev`.
 9. In a second terminal set `FAULTLENS_API_URL=http://localhost:3001` and start web with `pnpm --filter web dev`.
@@ -47,7 +47,7 @@ pnpm --filter web dev
 
 - AI-run generation stores metadata only (provider/model, status, duration, token counts, sanitized error code); raw generation prompts and responses are not saved to `ai_runs`.
 - Prompt templates and evaluation datasets/cases are stored intentionally because they are the artifact being evaluated. Treat them as potentially sensitive and use synthetic data while developing.
-- Current app has no authentication or workspace authorization. Do **not** expose the app or API publicly until access controls and abuse protections exist.
+- The Phase 3 branch introduces bearer-token authentication, roles, and workspace-scoped API queries. This is not yet a production security guarantee: it needs CI verification and review; the frontend login flow, rate limiting, account recovery, audit logging, and other abuse protections remain incomplete. Do **not** expose the app or API publicly.
 - Do not commit `.env`, API credentials, database connection strings, or provider secrets.
 - Use a secured, reachable Ollama endpoint for hosted use; `localhost:11434` on a hosted API refers to that service's own container, not your personal computer.
 
@@ -63,14 +63,14 @@ DELETE FROM ai_runs WHERE provider = 'faultlens-demo';
 
 - [ ] CI passes on the integrated branch.
 - [ ] `pnpm install --frozen-lockfile` passes after lockfile regeneration.
-- [ ] Apply all three migrations to a clean PostgreSQL database.
+- [ ] Apply all four migrations to a clean PostgreSQL database and review migration 004's legacy-data assignment.
 - [ ] Verify run persistence across an API restart.
 - [ ] Verify real Ollama generation, token counts, timeout/unavailable handling.
 - [ ] Verify analytics against hand-calculated fixtures and ensure unknown usage remains unknown.
 - [ ] Verify prompt creation/versioning and fair comparison with the same dataset.
 - [ ] Verify alert rules against controlled sample runs and an empty time window.
 - [ ] Run browser checks on overview, analytics, evaluations, and alerts.
-- [ ] Review dependency security, secret scanning, access controls, and request-size limits before public deployment.
+- [ ] Review dependency security, secret scanning, cross-workspace isolation, RBAC, authentication flows, request limits, and access controls before public deployment.
 - [ ] Record a short walkthrough after the above checks pass.
 
 No local runtime or browser testing was performed by the repository-editing connector. Mark every check only after gathering evidence from CI or local execution.
