@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -12,14 +12,14 @@ if (!databaseUrl) {
 
 const parsedUrl = new URL(databaseUrl);
 const databaseName = decodeURIComponent(parsedUrl.pathname.replace(/^\//, ''));
-if (!databaseName || !/(test|testing|integration)/i.test(databaseName)) {
+if (!/(test|testing|integration)/i.test(databaseName)) {
   throw new Error(
     'Refusing to run integration tests: TEST_DATABASE_URL database name must include "test", "testing", or "integration".',
   );
 }
 
 const pool = new Pool({ connectionString: databaseUrl, max: 4 });
-const migrationDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../migrations');
+const migrationDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../migrations');
 const migrationFiles = [
   '001_create_ai_runs.sql',
   '002_create_prompt_evaluations.sql',
@@ -30,26 +30,40 @@ const migrations = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS faultlens_schema_migrations (
       filename TEXT PRIMARY KEY,
+      checksum TEXT NOT NULL,
       applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
 
   for (const filename of migrationFiles) {
-    const alreadyApplied = await pool.query(
-      'SELECT 1 FROM faultlens_schema_migrations WHERE filename = $1',
+    const sql = await readFile(path.join(migrationDirectory, filename), 'utf8');
+    const { createHash } = await import('node:crypto');
+    const checksum = createHash('sha256').update(sql).digest('hex');
+    const existing = await pool.query(
+      'SELECT checksum FROM faultlens_schema_migrations WHERE filename = $1',
       [filename],
     );
-    if (alreadyApplied.rowCount) continue;
+    if (existing.rows[0]) {
+      if (existing.rows[0].checksum !== checksum) {
+        throw new Error(`Migration checksum changed after application: ${filename}`);
+      }
+      continue;
+    }
 
-    const sql = await readFile(path.join(migrationDirectory, filename), 'utf8');
-    await pool.query('BEGIN');
+    const client = await pool.connect();
     try {
-      await pool.query(sql);
-      await pool.query('INSERT INTO faultlens_schema_migrations(filename) VALUES ($1)', [filename]);
-      await pool.query('COMMIT');
+      await client.query('BEGIN');
+      await client.query(sql);
+      await client.query(
+        'INSERT INTO faultlens_schema_migrations(filename, checksum) VALUES ($1, $2)',
+        [filename, checksum],
+      );
+      await client.query('COMMIT');
     } catch (error) {
-      await pool.query('ROLLBACK');
+      await client.query('ROLLBACK');
       throw error;
+    } finally {
+      client.release();
     }
   }
 };
@@ -67,6 +81,22 @@ const hasColumns = async (table: string, columns: string[]) => {
   }
 };
 
+const validateSchema = async () => {
+  const required: Record<string, string[]> = {
+    ai_runs: ['id', 'provider', 'model', 'status', 'duration_ms', 'input_tokens', 'output_tokens', 'started_at', 'created_at'],
+    prompt_templates: ['id', 'name', 'model'],
+    prompt_versions: ['id', 'prompt_id', 'version', 'template'],
+    evaluation_datasets: ['id', 'name', 'description'],
+    evaluation_cases: ['id', 'dataset_id', 'input', 'expected_output'],
+    evaluation_runs: ['id', 'dataset_id', 'status', 'case_count'],
+    evaluation_results: ['id', 'evaluation_run_id', 'prompt_version_id', 'status', 'score', 'duration_ms'],
+    alert_rules: ['id', 'name', 'metric', 'threshold', 'window_minutes', 'enabled'],
+  };
+  for (const [table, columns] of Object.entries(required)) {
+    await hasColumns(table, columns);
+  }
+};
+
 const resetData = async () => {
   await pool.query(`
     TRUNCATE TABLE
@@ -76,6 +106,5 @@ const resetData = async () => {
   `);
 };
 
-export { pool, migrations, hasColumns, resetData };
-
+export { pool, migrations, validateSchema, resetData };
 export const closeIntegrationDatabase = async () => pool.end();
