@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -38,7 +39,7 @@ const scrypt = (password: string, salt: Buffer): Promise<Buffer> =>
   });
 
 const normalizeEmail = (value: unknown): string => {
-  if (typeof value !== 'string') throw new ConflictException('A valid email address is required.');
+  if (typeof value !== 'string') throw new BadRequestException('A valid email address is required.');
   const email = value.trim().toLowerCase();
   if (email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new ConflictException('A valid email address is required.');
@@ -48,7 +49,7 @@ const normalizeEmail = (value: unknown): string => {
 
 const validateWorkspaceName = (value: unknown): string => {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > 120) {
-    throw new ConflictException('workspaceName must be a non-empty string of at most 120 characters.');
+    throw new BadRequestException('workspaceName must be a non-empty string of at most 120 characters.');
   }
   return value.trim();
 };
@@ -64,13 +65,13 @@ export class AuthService {
   async register(value: unknown): Promise<AuthSession> {
     this.tokenSecret();
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      throw new ConflictException('Request body must be a JSON object.');
+      throw new BadRequestException('Request body must be a JSON object.');
     }
     const body = value as Record<string, unknown>;
     const email = normalizeEmail(body.email);
     const password = body.password;
     if (typeof password !== 'string' || password.length < 12 || password.length > 256) {
-      throw new ConflictException('password must contain between 12 and 256 characters.');
+      throw new BadRequestException('password must contain between 12 and 256 characters.');
     }
     const workspaceName = validateWorkspaceName(body.workspaceName);
     const passwordHash = await this.hashPassword(password);
@@ -206,6 +207,38 @@ export class AuthService {
     });
   }
 
+  async createWorkspace(userId: string, nameValue: unknown): Promise<AuthSession> {
+    this.tokenSecret();
+    const name = validateWorkspaceName(nameValue);
+    const result = await this.database.query<DbRow & {
+      user_id: string; email: string; workspace_id: string; workspace_name: string; role: WorkspaceRole;
+    }>(
+      `WITH new_workspace AS (
+         INSERT INTO workspaces (name, owner_user_id)
+         SELECT $2, u.id FROM users u WHERE u.id = $1
+         RETURNING id, name
+       ), new_member AS (
+         INSERT INTO workspace_members (workspace_id, user_id, role)
+         SELECT new_workspace.id, $1, 'owner' FROM new_workspace
+         RETURNING workspace_id, user_id, role
+       )
+       SELECT u.id AS user_id, u.email, w.id AS workspace_id, w.name AS workspace_name, m.role
+       FROM users u CROSS JOIN new_workspace w
+       JOIN new_member m ON m.workspace_id = w.id AND m.user_id = u.id
+       WHERE u.id = $1`,
+      [userId, name],
+    );
+    const workspace = result.rows[0];
+    if (!workspace) throw new UnauthorizedException('The current user is unavailable.');
+    return this.issueSession({
+      userId: workspace.user_id,
+      email: workspace.email,
+      workspaceId: workspace.workspace_id,
+      workspaceName: workspace.workspace_name,
+      role: workspace.role,
+    });
+  }
+
   async listWorkspaces(userId: string) {
     const result = await this.database.query<DbRow & {
       id: string; name: string; role: WorkspaceRole; created_at: Date;
@@ -242,7 +275,7 @@ export class AuthService {
     const email = normalizeEmail(body.email);
     const role = body.role;
     if (role !== 'admin' && role !== 'member' && role !== 'viewer') {
-      throw new ConflictException('role must be admin, member, or viewer.');
+      throw new BadRequestException('role must be admin, member, or viewer.');
     }
     if (actorRole === 'admin' && role !== 'member' && role !== 'viewer') {
       throw new ForbiddenException('Workspace admins can add members or viewers, not admins.');
