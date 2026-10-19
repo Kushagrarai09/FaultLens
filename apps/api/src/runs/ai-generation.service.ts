@@ -14,7 +14,7 @@ interface OllamaGenerateResponse {
 export class AiGenerationService {
   constructor(private readonly aiRunsService: AiRunsService) {}
 
-  async generate(input: GenerateAiInput): Promise<{ response: string; run: AiRunRecord }> {
+  async generate(input: GenerateAiInput, workspaceId: string): Promise<{ response: string; run: AiRunRecord }> {
     const startedAt = new Date();
     const startedMs = Date.now();
     const baseUrl = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/$/, '');
@@ -31,7 +31,7 @@ export class AiGenerationService {
       const errorCode = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
         ? 'OLLAMA_TIMEOUT'
         : 'OLLAMA_UNAVAILABLE';
-      const run = await this.saveFailure(input.model, startedAt, startedMs, errorCode);
+      const run = await this.saveFailure(input.model, startedAt, startedMs, errorCode, workspaceId);
       throw new BadGatewayException({
         message: errorCode === 'OLLAMA_TIMEOUT'
           ? 'The local model did not respond within 60 seconds.'
@@ -42,7 +42,7 @@ export class AiGenerationService {
     }
 
     if (!upstream.ok) {
-      const run = await this.saveFailure(input.model, startedAt, startedMs, 'OLLAMA_HTTP_ERROR');
+      const run = await this.saveFailure(input.model, startedAt, startedMs, 'OLLAMA_HTTP_ERROR', workspaceId);
       throw new BadGatewayException({
         message: 'Ollama returned an unsuccessful response. Check the model name and local Ollama logs.',
         runId: run.id,
@@ -54,7 +54,7 @@ export class AiGenerationService {
     try {
       result = await upstream.json() as OllamaGenerateResponse;
     } catch {
-      const run = await this.saveFailure(input.model, startedAt, startedMs, 'OLLAMA_INVALID_RESPONSE');
+      const run = await this.saveFailure(input.model, startedAt, startedMs, 'OLLAMA_INVALID_RESPONSE', workspaceId);
       throw new BadGatewayException({
         message: 'Ollama returned a response FaultLens could not parse.',
         runId: run.id,
@@ -80,7 +80,7 @@ export class AiGenerationService {
       outputTokens: this.asTokenCount(result.eval_count),
       errorCode: null,
       startedAt: startedAt.toISOString(),
-    });
+    }, workspaceId);
 
     return { response: result.response, run };
   }
@@ -90,6 +90,7 @@ export class AiGenerationService {
     startedAt: Date,
     startedMs: number,
     errorCode: string,
+    workspaceId: string,
   ): Promise<AiRunRecord> {
     return this.aiRunsService.create({
       provider: 'ollama',
@@ -100,7 +101,7 @@ export class AiGenerationService {
       outputTokens: null,
       errorCode,
       startedAt: startedAt.toISOString(),
-    });
+    }, workspaceId);
   }
 
   private asTokenCount(value: unknown): number | null {
