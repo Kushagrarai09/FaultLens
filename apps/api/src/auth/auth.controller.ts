@@ -6,7 +6,6 @@ import { CurrentUser } from './current-user.decorator.js';
 import type { AuthPrincipal } from './auth.types.js';
 
 @Controller('api/auth')
-@UseGuards(RateLimitGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -20,7 +19,7 @@ export class AuthController {
     return this.authService.login(body);
   }
 
-  @UseGuards(AccessTokenGuard)
+  @UseGuards(AccessTokenGuard, RateLimitGuard)
   @Get('me')
   me(@CurrentUser() user: AuthPrincipal) {
     return {
@@ -29,7 +28,7 @@ export class AuthController {
     };
   }
 
-  @UseGuards(AccessTokenGuard)
+  @UseGuards(AccessTokenGuard, RateLimitGuard)
   @Post('switch-workspace')
   switchWorkspace(@CurrentUser() user: AuthPrincipal, @Body() body: unknown) {
     const workspaceId = body && typeof body === 'object' && !Array.isArray(body)
