@@ -32,7 +32,7 @@ async function bootstrap() {
   express.use(expressModule.urlencoded({ extended: false, limit: config.bodyLimitBytes, parameterLimit: 100 }));
 
   // Sanitize malformed/oversized body errors raised before Nest's route pipeline.
-  app.use((error: unknown, request: Request, response: Response, next: NextFunction) => {
+  express.use((error: unknown, request: Request, response: Response, next: NextFunction) => {
     if (!error) return next();
     const type = (error as { type?: string }).type;
     const requestId = response.getHeader('X-Request-Id') ?? null;
