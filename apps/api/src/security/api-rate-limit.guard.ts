@@ -1,10 +1,14 @@
 import { Injectable, TooManyRequestsException, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { loadRuntimeConfig } from '../config/runtime-config.js';
 
 interface WindowEntry {
   start: number;
   count: number;
+}
+interface RateBucket {
+  name: string;
+  max: number;
+  windowMs: number;
 }
 
 @Injectable()
@@ -20,15 +24,7 @@ export class ApiRateLimitGuard implements CanActivate {
     // Keep liveness/readiness probes reachable even when an API client is over quota.
     if (path === '/health' || path === '/health/live' || path === '/health/ready') return true;
 
-    const config = loadRuntimeConfig();
-    const method = request.method.toUpperCase();
-    let bucket = { name: 'default', max: config.rateLimitMax, windowMs: config.rateLimitWindowMs };
-    if (method === 'POST' && (path === '/api/auth/login' || path === '/api/auth/register')) {
-      bucket = { name: 'auth', max: config.authRateLimitMax, windowMs: config.authRateLimitWindowMs };
-    } else if (method === 'POST' && path === '/api/ai/generate') {
-      bucket = { name: 'generation', max: config.generationRateLimitMax, windowMs: config.generationRateLimitWindowMs };
-    }
-
+    const bucket = this.bucketFor(request.method.toUpperCase(), path);
     const now = Date.now();
     const key = `${bucket.name}:${this.clientKey(request)}`;
     let entry = this.windows.get(key);
@@ -63,9 +59,37 @@ export class ApiRateLimitGuard implements CanActivate {
     this.windows.clear();
   }
 
+  private bucketFor(method: string, path: string): RateBucket {
+    if (method === 'POST' && (path === '/api/auth/login' || path === '/api/auth/register')) {
+      return {
+        name: 'auth',
+        max: this.readBoundedInt(process.env.AUTH_RATE_LIMIT_MAX, 10, 1, 100),
+        windowMs: this.readBoundedInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 60_000, 1_000, 3_600_000),
+      };
+    }
+    if (method === 'POST' && path === '/api/ai/generate') {
+      return {
+        name: 'generation',
+        max: this.readBoundedInt(process.env.GENERATION_RATE_LIMIT_MAX, 20, 1, 500),
+        windowMs: this.readBoundedInt(process.env.GENERATION_RATE_LIMIT_WINDOW_MS, 60_000, 1_000, 3_600_000),
+      };
+    }
+    return {
+      name: 'default',
+      max: this.readBoundedInt(process.env.API_RATE_LIMIT_MAX, 120, 1, 10_000),
+      windowMs: this.readBoundedInt(process.env.API_RATE_LIMIT_WINDOW_MS, 60_000, 1_000, 3_600_000),
+    };
+  }
+
   private clientKey(request: Request): string {
     // Do not trust X-Forwarded-For; configure trusted proxy handling explicitly
     // only when running behind a known reverse proxy.
     return request.socket.remoteAddress ?? 'unknown';
+  }
+
+  private readBoundedInt(value: string | undefined, fallback: number, min: number, max: number): number {
+    if (!value || !/^\d+$/.test(value)) return fallback;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
   }
 }
