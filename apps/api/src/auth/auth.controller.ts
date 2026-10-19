@@ -1,4 +1,3 @@
-import { RateLimitGuard } from '../common/rate-limit.guard.js';
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AccessTokenGuard } from './access-token.guard.js';
 import { AuthService } from './auth.service.js';
@@ -6,7 +5,6 @@ import { CurrentUser } from './current-user.decorator.js';
 import type { AuthPrincipal } from './auth.types.js';
 
 @Controller('api/auth')
-@UseGuards(RateLimitGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -20,7 +18,7 @@ export class AuthController {
     return this.authService.login(body);
   }
 
-  @UseGuards(AccessTokenGuard, RateLimitGuard)
+  @UseGuards(AccessTokenGuard)
   @Get('me')
   me(@CurrentUser() user: AuthPrincipal) {
     return {
@@ -29,7 +27,7 @@ export class AuthController {
     };
   }
 
-  @UseGuards(AccessTokenGuard, RateLimitGuard)
+  @UseGuards(AccessTokenGuard)
   @Post('switch-workspace')
   switchWorkspace(@CurrentUser() user: AuthPrincipal, @Body() body: unknown) {
     const workspaceId = body && typeof body === 'object' && !Array.isArray(body)
