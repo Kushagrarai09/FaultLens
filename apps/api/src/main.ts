@@ -5,41 +5,17 @@ import { AppModule } from './app.module.js';
 import { StructuredLogger } from './common/structured-logger.js';
 import { requestIdMiddleware } from './common/request-id.middleware.js';
 import { SanitizedExceptionFilter } from './common/sanitized-exception.filter.js';
-
-function validateConfiguration() {
-  const requiredSecret = process.env.AUTH_TOKEN_SECRET;
-  if (!requiredSecret || requiredSecret.length < 32) {
-    throw new Error('AUTH_TOKEN_SECRET must be set to a random secret of at least 32 characters.');
-  }
-  const port = Number(process.env.PORT ?? 3001);
-  if (!Number.isSafeInteger(port) || port < 1 || port > 65535) {
-    throw new Error('PORT must be an integer between 1 and 65535.');
-  }
-  const timeout = Number(process.env.HTTP_REQUEST_TIMEOUT_MS ?? 65_000);
-  if (!Number.isSafeInteger(timeout) || timeout < 1_000 || timeout > 180_000) {
-    throw new Error('HTTP_REQUEST_TIMEOUT_MS must be an integer between 1000 and 180000.');
-  }
-  for (const name of ['OLLAMA_BASE_URL', 'DATABASE_URL']) {
-    const value = process.env[name];
-    if (!value) continue;
-    try {
-      const parsed = new URL(value);
-      if (!['http:', 'https:', 'postgres:', 'postgresql:'].includes(parsed.protocol)) throw new Error();
-    } catch {
-      throw new Error(`${name} must be a valid URL.`);
-    }
-  }
-}
+import { loadApiConfiguration } from './common/configuration.js';
 
 async function bootstrap() {
-  validateConfiguration();
+  const configuration = loadApiConfiguration();
   const app = await NestFactory.create(AppModule, {
     logger: new StructuredLogger({ timestamp: false }),
     bodyParser: false,
   });
   const express = app.getHttpAdapter().getInstance();
   const expressModule = await import('express');
-  express.use(expressModule.json({ limit: process.env.REQUEST_BODY_LIMIT ?? '256kb', strict: true }));
+  express.use(expressModule.json({ limit: configuration.requestBodyLimit, strict: true }));
   express.use(expressModule.urlencoded({ extended: false, limit: process.env.REQUEST_BODY_LIMIT ?? '256kb', parameterLimit: 100 }));
 
 
@@ -95,10 +71,7 @@ async function bootstrap() {
     next();
   });
 
-  const configuredOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const configuredOrigins = configuration.corsOrigins;
   app.enableCors({
     origin(origin, callback) {
       if (!origin || configuredOrigins.includes(origin)) return callback(null, true);
@@ -117,7 +90,7 @@ async function bootstrap() {
     forbidUnknownValues: true,
   }));
   app.use((request: Request, response: Response, next: NextFunction) => {
-    response.setTimeout(Number(process.env.HTTP_REQUEST_TIMEOUT_MS ?? 65_000), () => {
+    response.setTimeout(Number(configuration.requestTimeoutMs), () => {
       if (!response.headersSent) {
         response.status(408).json({
           statusCode: 408,
@@ -139,6 +112,6 @@ async function bootstrap() {
   server.headersTimeout = Math.min(server.requestTimeout + 5_000, 190_000);
   server.keepAliveTimeout = 5_000;
 
-  await app.listen(Number(process.env.PORT ?? 3001));
+  await app.listen(configuration.port);
 }
 await bootstrap();
