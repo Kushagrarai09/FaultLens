@@ -109,9 +109,12 @@ The API boot validates `AUTH_TOKEN_SECRET`, `DATABASE_URL`, `PORT`, request time
 | `AUTH_RATE_LIMIT_WINDOW_MS` | `60000` | Auth rate window |
 | `GENERATION_RATE_LIMIT_MAX` | `20` | Model generation requests in its window |
 | `GENERATION_RATE_LIMIT_WINDOW_MS` | `60000` | Generation rate window |
+| `PG_POOL_MAX` | `10` | Maximum PostgreSQL pool size |
 | `PG_CONNECT_TIMEOUT_MS` | `2000` | PostgreSQL connection timeout |
+| `PG_IDLE_TIMEOUT_MS` | `30000` | PostgreSQL idle connection timeout |
 | `PG_QUERY_TIMEOUT_MS` | `5000` | Driver query timeout |
 | `PG_STATEMENT_TIMEOUT_MS` | `5000` | PostgreSQL statement timeout |
+| `PG_HEALTH_TIMEOUT_MS` | `1000` | PostgreSQL health-check query timeout |
 | `OLLAMA_HEALTH_TIMEOUT_MS` | `2000` | Ollama health request timeout |
 
 `GET /health/live` is a liveness check that does not contact dependencies. `GET /health/ready` checks PostgreSQL and Ollama and returns HTTP 503 if either dependency is unavailable. The process can stay alive when PostgreSQL is down so the probe can distinguish liveness from readiness. Readiness currently requires both dependencies even for application routes that do not generate text.
