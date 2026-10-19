@@ -19,8 +19,7 @@ import { AiRunsService } from './ai-runs.service.js';
 import { parseCreateAiRunInput } from './ai-run.validation.js';
 
 @Controller('api/runs')
-@UseGuards(RateLimitGuard)
-@UseGuards(AccessTokenGuard, WorkspaceRolesGuard)
+@UseGuards(AccessTokenGuard, WorkspaceRolesGuard, RateLimitGuard)
 export class AiRunsController {
   constructor(private readonly aiRunsService: AiRunsService) {}
 
