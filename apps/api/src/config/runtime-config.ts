@@ -85,9 +85,6 @@ export const loadRuntimeConfig = (env: NodeJS.ProcessEnv = process.env): Runtime
   if (authTokenSecret.length < 32 || /^(change.?me|replace|example|test|secret)$/i.test(authTokenSecret.trim())) {
     throw new ServiceUnavailableException('Configuration AUTH_TOKEN_SECRET must be a unique random secret of at least 32 characters.');
   }
-  if (!databaseUrl) {
-    throw new ServiceUnavailableException('Configuration DATABASE_URL is required for API startup.');
-  }
 
   const ollamaBaseUrl = httpUrl(env.OLLAMA_BASE_URL ?? 'http://localhost:11434', 'OLLAMA_BASE_URL');
   const allowedOrigins = (env.CORS_ALLOWED_ORIGINS ?? 'http://localhost:3000')
