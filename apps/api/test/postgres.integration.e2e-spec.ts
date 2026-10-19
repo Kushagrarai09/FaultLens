@@ -129,13 +129,28 @@ describe('FaultLens PostgreSQL integration', () => {
     expect(saved.rows[0].enabled).toBe(true);
   });
 
-  it('returns safe, useful 503 responses for missing schema and an unavailable database', async () => {
-    // A dedicated transaction drops only an intentionally temporary table in the
-    // disposable test database, validating that PostgreSQL errors are sanitized.
-    await pool.query('CREATE TABLE IF NOT EXISTS integration_private_failure_probe (value TEXT)');
-    await pool.query('DROP TABLE integration_private_failure_probe');
-    const response = await request(app.getHttpServer()).get('/api/runs/00000000-0000-4000-8000-000000000000').expect(404);
-    expect(JSON.stringify(response.body)).not.toContain(databaseUrl);
-    expect(JSON.stringify(response.body)).not.toContain('password');
+  it('returns a sanitized 503 when PostgreSQL is unreachable', async () => {
+    const originalUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = 'postgresql://faultlens:wrong-password@127.0.0.1:1/faultlens_test';
+    let failingApp: INestApplication | undefined;
+    try {
+      const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+      failingApp = moduleFixture.createNestApplication();
+      await failingApp.init();
+    } finally {
+      if (originalUrl === undefined) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = originalUrl;
+    }
+
+    try {
+      const response = await request(failingApp!.getHttpServer()).get('/api/analytics/summary').expect(503);
+      const payload = JSON.stringify(response.body);
+      expect(payload).toContain('database request failed');
+      expect(payload).not.toContain('wrong-password');
+      expect(payload).not.toContain('127.0.0.1');
+      expect(payload).not.toContain('SELECT');
+    } finally {
+      await failingApp?.close();
+    }
   });
 });
