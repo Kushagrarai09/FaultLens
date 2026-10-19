@@ -2,7 +2,7 @@
 
 The FaultLens API is a NestJS application that powers the FaultLens prototype: AI-run ingestion and history, Ollama generation, token/latency analytics, prompt versions, evaluation datasets and comparisons, and threshold-based reliability alerts.
 
-> **Status:** MVP/prototype. The API now requires bearer-token authentication and applies workspace scoping, but security review, frontend login integration, rate limiting, audit logging, and broader production hardening are still outstanding. Do not treat this as production-ready.
+> **Status:** MVP/prototype. Bearer authentication, workspace scoping, and basic API hardening are implemented on feature branches; run the full tests and review CI before merging. The in-memory limiter is single-instance only. Do not treat the application as production-ready yet.
 
 ## Requirements
 
@@ -93,6 +93,41 @@ The integration checks cover:
 - A sanitized HTTP 503 response when PostgreSQL is unreachable.
 
 The prompt-comparison integration test deliberately points Ollama to a closed local port; it tests durable error-result storage without requiring a live model. It does not verify successful real-model generation.
+
+## API hardening configuration
+
+The API boot validates `AUTH_TOKEN_SECRET`, `PORT`, HTTP request timeout settings and configured service URLs. It refuses to start if a required setting is invalid.
+
+| Setting | Default | Purpose |
+|---|---:|---|
+| `REQUEST_BODY_LIMIT` | `256kb` | JSON and URL-encoded body limit |
+| `HTTP_REQUEST_TIMEOUT_MS` | `65000` | Server request timeout |
+| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated exact allowed origins |
+| `API_RATE_LIMIT_MAX` | `120` | Requests per IP/user in the default window |
+| `API_RATE_LIMIT_WINDOW_MS` | `60000` | Default rate window |
+| `AUTH_RATE_LIMIT_MAX` | `10` | Login/registration attempts in the auth window |
+| `AUTH_RATE_LIMIT_WINDOW_MS` | `60000` | Auth rate window |
+| `GENERATION_RATE_LIMIT_MAX` | `20` | Model generation requests in its window |
+| `GENERATION_RATE_LIMIT_WINDOW_MS` | `60000` | Generation rate window |
+| `PG_CONNECT_TIMEOUT_MS` | `2000` | PostgreSQL connection timeout |
+| `PG_QUERY_TIMEOUT_MS` | `5000` | Driver query timeout |
+| `PG_STATEMENT_TIMEOUT_MS` | `5000` | PostgreSQL statement timeout |
+| `OLLAMA_HEALTH_TIMEOUT_MS` | `2000` | Ollama health request timeout |
+
+`GET /health/live` is a liveness check that does not contact dependencies. `GET /health/ready` checks PostgreSQL and Ollama and returns HTTP 503 if either dependency is unavailable. Readiness currently requires both dependencies even for application routes that do not generate text.
+
+The application emits single-line JSON logs containing request ID, method, path (without query string), status and duration. Request bodies, credentials, tokens and prompt/response fields are redacted by the logger sanitizer. Generic API errors are returned without stack traces or internal provider/database details. `X-Request-Id` is returned for support and correlation.
+
+The request-size and server-timeout controls use Express/Node HTTP settings. The in-memory fixed-window rate limiter is suitable only for one API process; it does not share counters between replicas and should be replaced with Redis-backed limiting before horizontally scaled production deployment. Exact CORS origins must be configured for the deployed web origin; do not add wildcards.
+
+Run hardening-focused tests with:
+
+```bash
+pnpm --filter api test:hardening
+pnpm --filter api build
+```
+
+These tests cover limiter behavior, dependency failures, health endpoints, and error/log redaction. They do not replace deployment-level load testing, a security review, or tests against the exact production proxy/network setup.
 
 ## Authentication and workspace authorization
 
