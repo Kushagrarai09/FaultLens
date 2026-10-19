@@ -1,4 +1,4 @@
-import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module.js';
@@ -41,6 +41,14 @@ async function bootstrap() {
   express.use(expressModule.json({ limit: process.env.REQUEST_BODY_LIMIT ?? '256kb', strict: true }));
   express.use(expressModule.urlencoded({ extended: false, limit: process.env.REQUEST_BODY_LIMIT ?? '256kb', parameterLimit: 100 }));
 
+  app.use((request: Request, response: Response, next: NextFunction) => {
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.setHeader('X-Frame-Options', 'DENY');
+    response.setHeader('Referrer-Policy', 'no-referrer');
+    response.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   app.use(requestIdMiddleware);
   app.use((request: Request, response: Response, next: NextFunction) => {
     const requestId = (request as Request & { requestId?: string }).requestId ?? 'unknown';
@@ -75,6 +83,7 @@ async function bootstrap() {
     credentials: false,
     maxAge: 600,
   });
+  app.useGlobalFilters(new (await import('./common/sanitized-exception.filter.js')).SanitizedExceptionFilter());
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     transform: true,
@@ -115,6 +124,11 @@ async function bootstrap() {
   });
 
   app.enableShutdownHooks();
+  const server = app.getHttpServer() as import('node:http').Server;
+  server.requestTimeout = Number(process.env.HTTP_REQUEST_TIMEOUT_MS ?? 65_000);
+  server.headersTimeout = Math.min(server.requestTimeout + 5_000, 190_000);
+  server.keepAliveTimeout = 5_000;
+
   await app.listen(Number(process.env.PORT ?? 3001));
 }
 await bootstrap();
