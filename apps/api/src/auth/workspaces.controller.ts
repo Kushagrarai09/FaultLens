@@ -1,3 +1,4 @@
+import { RateLimitGuard } from '../common/rate-limit.guard.js';
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AccessTokenGuard } from './access-token.guard.js';
 import { AuthService } from './auth.service.js';
@@ -7,6 +8,7 @@ import { WorkspaceRoles } from './roles.decorator.js';
 import { WorkspaceRolesGuard } from './workspace-roles.guard.js';
 
 @Controller('api/workspaces')
+@UseGuards(RateLimitGuard)
 @UseGuards(AccessTokenGuard, WorkspaceRolesGuard)
 export class WorkspacesController {
   constructor(private readonly authService: AuthService) {}
