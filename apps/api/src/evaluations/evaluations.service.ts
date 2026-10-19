@@ -211,7 +211,6 @@ export class EvaluationsService {
 
     const successes = results.filter((item) => item.status === 'success').length;
     const failures = results.length - successes;
-    const scored = results.filter((item) => item.status === 'success' && typeof item.score === 'number');
     const grouped = versions.map((version) => {
       const items = results.filter((item) => item.promptVersionId === version.id);
       const good = items.filter((item) => item.status === 'success');
