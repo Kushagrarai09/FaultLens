@@ -3,14 +3,12 @@ import {
   Catch,
   HttpException,
   HttpStatus,
-  Injectable,
   type ExceptionFilter,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { RequestIdRequest } from './request-id.middleware.js';
 
 @Catch()
-@Injectable()
 export class SanitizedExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
