@@ -253,6 +253,14 @@ describe('FaultLens PostgreSQL and workspace authorization integration', () => {
       promptVersionIds: [promptA.body.versions[0].id, promptB.body.versions[0].id],
     }).expect(404);
     await apiPatch(`/api/alerts/rules/${rule.body.id}`, outsiderToken).send({ enabled: false }).expect(404);
+
+    const outsiderRun = await createRun({ provider: 'outsider-data' }, outsiderToken).expect(201);
+    const persistedOutsider = await pool.query('SELECT workspace_id FROM ai_runs WHERE id = $1', [outsiderRun.body.id]);
+    expect(persistedOutsider.rows[0].workspace_id).toBe(outsider.workspace.id);
+    await apiGet('/api/runs', outsiderToken).expect(200)
+      .expect(({ body }) => expect(body.data).toHaveLength(1));
+    await apiGet('/api/runs').expect(200)
+      .expect(({ body }) => expect(body.data).toHaveLength(1));
   });
 
   it('returns a sanitized 503 when PostgreSQL is unreachable', async () => {
