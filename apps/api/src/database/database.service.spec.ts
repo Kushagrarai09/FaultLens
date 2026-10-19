@@ -63,10 +63,18 @@ describe('DatabaseService', () => {
 
   it('converts connectivity failures into a sanitized service-unavailable error', async () => {
     process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/test';
-    poolQuery.mockRejectedValueOnce(new Error('private socket or password details'));
+    poolQuery.mockRejectedValue(new Error('private socket or password details'));
     const service = new DatabaseService();
-    await expect(service.healthCheck()).rejects.toThrow('PostgreSQL health check failed.');
-    await expect(service.healthCheck()).rejects.toBeInstanceOf(ServiceUnavailableException);
+    let thrown: unknown;
+    try {
+      await service.healthCheck();
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(ServiceUnavailableException);
+    expect(String(thrown)).toContain('PostgreSQL health check failed.');
+    expect(String(thrown)).not.toContain('private socket');
+    expect(String(thrown)).not.toContain('password');
   });
 
   it('maps database failures to a sanitized 503 without exposing query or credentials', async () => {
