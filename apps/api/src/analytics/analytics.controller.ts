@@ -6,8 +6,7 @@ import type { AuthPrincipal } from '../auth/auth.types.js';
 import { AnalyticsService } from './analytics.service.js';
 
 @Controller('api/analytics')
-@UseGuards(RateLimitGuard)
-@UseGuards(AccessTokenGuard)
+@UseGuards(AccessTokenGuard, RateLimitGuard)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
