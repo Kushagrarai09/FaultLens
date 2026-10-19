@@ -8,6 +8,7 @@ const migrationFiles = [
   '001_create_ai_runs.sql',
   '002_create_prompt_evaluations.sql',
   '003_create_alert_rules.sql',
+  '004_create_auth_workspaces.sql',
 ];
 const migrationDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../migrations');
 
@@ -71,7 +72,7 @@ async function main() {
     }
 
     const requiredTables = [
-      'ai_runs', 'prompt_templates', 'prompt_versions', 'evaluation_datasets',
+      'users', 'workspaces', 'workspace_members', 'ai_runs', 'prompt_templates', 'prompt_versions', 'evaluation_datasets',
       'evaluation_cases', 'evaluation_runs', 'evaluation_results', 'alert_rules',
     ];
     const result = await pool.query(
