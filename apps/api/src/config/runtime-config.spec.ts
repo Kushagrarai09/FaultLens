@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadRuntimeConfig } from './runtime-config.js';
 
 const baseEnv = () => ({
-  AUTH_TOKEN_SECRET: 'random-test-secret-that-is-long-enough-to-pass-validation',
+  AUTH_TOKEN_SECRET: 'random-test-secret-that-is-long-enough-to-pass-validation-value',
   DATABASE_URL: 'postgresql://faultlens:password@localhost:5432/faultlens_test',
 });
 
