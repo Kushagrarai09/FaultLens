@@ -8,8 +8,7 @@ import { WorkspaceRolesGuard } from '../auth/workspace-roles.guard.js';
 import { EvaluationsService } from './evaluations.service.js';
 
 @Controller('api')
-@UseGuards(RateLimitGuard)
-@UseGuards(AccessTokenGuard, WorkspaceRolesGuard)
+@UseGuards(AccessTokenGuard, WorkspaceRolesGuard, RateLimitGuard)
 export class EvaluationsController {
   constructor(private readonly evaluationsService: EvaluationsService) {}
 
