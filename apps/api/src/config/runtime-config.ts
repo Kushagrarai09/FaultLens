@@ -69,14 +69,16 @@ export const loadRuntimeConfig = (env: NodeJS.ProcessEnv = process.env): Runtime
   const generationRateLimitMax = integer(env.GENERATION_RATE_LIMIT_MAX, 20, 1, 500, 'GENERATION_RATE_LIMIT_MAX');
 
   const databaseUrl = env.DATABASE_URL?.trim() ?? '';
-  let parsedDb: URL;
-  try {
-    parsedDb = new URL(databaseUrl);
-  } catch {
-    throw new ServiceUnavailableException('Configuration DATABASE_URL must be a valid PostgreSQL URL.');
-  }
-  if (!['postgres:', 'postgresql:'].includes(parsedDb.protocol) || !parsedDb.hostname || !parsedDb.pathname.slice(1)) {
-    throw new ServiceUnavailableException('Configuration DATABASE_URL must point to a PostgreSQL database.');
+  let parsedDb: URL | null = null;
+  if (databaseUrl) {
+    try {
+      parsedDb = new URL(databaseUrl);
+    } catch {
+      throw new ServiceUnavailableException('Configuration DATABASE_URL must be a valid PostgreSQL URL.');
+    }
+    if (!['postgres:', 'postgresql:'].includes(parsedDb.protocol) || !parsedDb.hostname || !parsedDb.pathname.slice(1)) {
+      throw new ServiceUnavailableException('Configuration DATABASE_URL must point to a PostgreSQL database.');
+    }
   }
 
   const authTokenSecret = env.AUTH_TOKEN_SECRET ?? '';
