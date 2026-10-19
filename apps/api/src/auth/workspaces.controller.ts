@@ -8,8 +8,7 @@ import { WorkspaceRoles } from './roles.decorator.js';
 import { WorkspaceRolesGuard } from './workspace-roles.guard.js';
 
 @Controller('api/workspaces')
-@UseGuards(RateLimitGuard)
-@UseGuards(AccessTokenGuard, WorkspaceRolesGuard)
+@UseGuards(AccessTokenGuard, WorkspaceRolesGuard, RateLimitGuard)
 export class WorkspacesController {
   constructor(private readonly authService: AuthService) {}
 
