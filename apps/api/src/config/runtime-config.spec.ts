@@ -36,7 +36,7 @@ describe('loadRuntimeConfig', () => {
 
   it('rejects wildcard, non-origin, and credential-bearing service URLs', () => {
     expect(() => loadRuntimeConfig({ ...baseEnv(), CORS_ALLOWED_ORIGINS: '*' })).toThrow(/wildcard/);
-    expect(() => loadRuntimeConfig({ ...baseEnv(), CORS_ALLOWED_ORIGINS: 'https://example.com/path' })).toThrow(/exact HTTP\\(S\\) origin/);
+    expect(() => loadRuntimeConfig({ ...baseEnv(), CORS_ALLOWED_ORIGINS: 'https://example.com/path' })).toThrow(/exact HTTP/);
     expect(() => loadRuntimeConfig({ ...baseEnv(), OLLAMA_BASE_URL: 'http://alice:secret@localhost:11434' })).toThrow(/credentials/);
   });
 });
