@@ -42,6 +42,16 @@ async function bootstrap() {
   express.use(expressModule.json({ limit: process.env.REQUEST_BODY_LIMIT ?? '256kb', strict: true }));
   express.use(expressModule.urlencoded({ extended: false, limit: process.env.REQUEST_BODY_LIMIT ?? '256kb', parameterLimit: 100 }));
 
+
+
+  app.use((request: Request, response: Response, next: NextFunction) => {
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.setHeader('X-Frame-Options', 'DENY');
+    response.setHeader('Referrer-Policy', 'no-referrer');
+    response.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   // Handle errors raised by body parsers before Nest routes are entered.
   app.use((error: unknown, request: Request, response: Response, next: NextFunction) => {
     if (!error) return next();
@@ -64,14 +74,6 @@ async function bootstrap() {
       statusCode: 400, error: 'Bad Request',
       message: 'The request could not be processed.', requestId,
     });
-  });
-
-  app.use((request: Request, response: Response, next: NextFunction) => {
-    response.setHeader('X-Content-Type-Options', 'nosniff');
-    response.setHeader('X-Frame-Options', 'DENY');
-    response.setHeader('Referrer-Policy', 'no-referrer');
-    response.setHeader('Cache-Control', 'no-store');
-    next();
   });
 
   app.use(requestIdMiddleware);
