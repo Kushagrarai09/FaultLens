@@ -19,7 +19,6 @@ async function bootstrap() {
   express.use(expressModule.urlencoded({ extended: false, limit: configuration.requestBodyLimit, parameterLimit: 100 }));
 
 
-
   app.use((request: Request, response: Response, next: NextFunction) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('X-Frame-Options', 'DENY');
@@ -52,7 +51,6 @@ async function bootstrap() {
     });
   });
 
-  app.use(requestIdMiddleware);
   app.use((request: Request, response: Response, next: NextFunction) => {
     const requestId = (request as Request & { requestId?: string }).requestId ?? 'unknown';
     const started = Date.now();
@@ -102,10 +100,9 @@ async function bootstrap() {
   });
 
 
-
   app.enableShutdownHooks();
   const server = app.getHttpServer() as import('node:http').Server;
-  server.requestTimeout = Number(process.env.HTTP_REQUEST_TIMEOUT_MS ?? 65_000);
+  server.requestTimeout = configuration.requestTimeoutMs;
   server.headersTimeout = Math.min(server.requestTimeout + 5_000, 190_000);
   server.keepAliveTimeout = 5_000;
 
