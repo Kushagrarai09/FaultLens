@@ -27,14 +27,6 @@ async function bootstrap() {
   express.use(expressModule.json({ limit: configuration.requestBodyLimit, strict: true }));
   express.use(expressModule.urlencoded({ extended: false, limit: configuration.requestBodyLimit, parameterLimit: 100 }));
 
-  app.use((request: Request, response: Response, next: NextFunction) => {
-    response.setHeader('X-Content-Type-Options', 'nosniff');
-    response.setHeader('X-Frame-Options', 'DENY');
-    response.setHeader('Referrer-Policy', 'no-referrer');
-    response.setHeader('Cache-Control', 'no-store');
-    next();
-  });
-
   // Handle errors raised by body parsers before Nest routes are entered.
   app.use((error: unknown, request: Request, response: Response, next: NextFunction) => {
     if (!error) return next();
