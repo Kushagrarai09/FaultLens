@@ -11,20 +11,22 @@ import { loadRuntimeConfig } from '../config/runtime-config.js';
 export class DatabaseService implements OnModuleDestroy {
   private readonly pool: Pool | null;
   private readonly healthTimeoutMs: number;
-  private readonly healthTimeoutMs: number;
 
   constructor() {
-    const config = loadRuntimeConfig();
-    const connectionString = config.databaseUrl;
-    this.healthTimeoutMs = config.pgHealthTimeoutMs;
-    this.pool = new Pool({
-      connectionString,
-      max: config.pgPoolMax,
-      connectionTimeoutMillis: config.pgConnectTimeoutMs,
-      idleTimeoutMillis: config.pgIdleTimeoutMs,
-      query_timeout: config.pgQueryTimeoutMs,
-      statement_timeout: config.pgStatementTimeoutMs,
-    });
+    const rawUrl = process.env.DATABASE_URL;
+    let config: ReturnType<typeof loadRuntimeConfig> | null = null;
+    if (rawUrl) config = loadRuntimeConfig();
+    this.healthTimeoutMs = config?.pgHealthTimeoutMs ?? 1_000;
+    this.pool = rawUrl && config
+      ? new Pool({
+          connectionString: config.databaseUrl,
+          max: config.pgPoolMax,
+          connectionTimeoutMillis: config.pgConnectTimeoutMs,
+          idleTimeoutMillis: config.pgIdleTimeoutMs,
+          query_timeout: config.pgQueryTimeoutMs,
+          statement_timeout: config.pgStatementTimeoutMs,
+        })
+      : null;
   }
 
   async healthCheck(): Promise<void> {
