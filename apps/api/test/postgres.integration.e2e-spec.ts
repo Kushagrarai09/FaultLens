@@ -81,7 +81,7 @@ describe('FaultLens PostgreSQL and workspace authorization integration', () => {
     await apiGet('/api/auth/me', 'not-a-valid-token').expect(401);
 
     const created = await createRun().expect(201);
-    const viewer = await registerUser('Viewer's Own Workspace'.replace("'", ''));
+    const viewer = await registerUser('Viewers Own Workspace');
     await apiPost('/api/workspaces/members').send({ email: viewer.email, role: 'viewer' }).expect(201);
 
     const switched = await request(app.getHttpServer()).post('/api/auth/switch-workspace')
