@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 import { loadRuntimeConfig } from '../config/runtime-config.js';
+import { loadRuntimeConfig } from '../config/runtime-config.js';
 
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
