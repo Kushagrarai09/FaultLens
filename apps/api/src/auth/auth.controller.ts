@@ -6,6 +6,7 @@ import { CurrentUser } from './current-user.decorator.js';
 import type { AuthPrincipal } from './auth.types.js';
 
 @Controller('api/auth')
+@UseGuards(RateLimitGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
