@@ -9,8 +9,7 @@ import { AlertsService } from './alerts.service.js';
 import type { AlertRuleDto } from './alerts.service.js';
 
 @Controller('api/alerts')
-@UseGuards(RateLimitGuard)
-@UseGuards(AccessTokenGuard, WorkspaceRolesGuard)
+@UseGuards(AccessTokenGuard, WorkspaceRolesGuard, RateLimitGuard)
 export class AlertsController {
   constructor(private readonly alertsService: AlertsService) {}
 
