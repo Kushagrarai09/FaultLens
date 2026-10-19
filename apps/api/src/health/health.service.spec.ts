@@ -7,11 +7,21 @@ describe('HealthService', () => {
   const service = new HealthService({ healthCheck } as unknown as DatabaseService);
   const originalFetch = globalThis.fetch;
   const originalBaseUrl = process.env.OLLAMA_BASE_URL;
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+  const originalAuthTokenSecret = process.env.AUTH_TOKEN_SECRET;
+  beforeEach(() => {
+    process.env.DATABASE_URL = 'postgresql://faultlens:password@localhost:5432/faultlens_test';
+    process.env.AUTH_TOKEN_SECRET = 'random-test-secret-with-sufficient-length-for-validation';
+  });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
     if (originalBaseUrl === undefined) delete process.env.OLLAMA_BASE_URL;
     else process.env.OLLAMA_BASE_URL = originalBaseUrl;
+    if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = originalDatabaseUrl;
+    if (originalAuthTokenSecret === undefined) delete process.env.AUTH_TOKEN_SECRET;
+    else process.env.AUTH_TOKEN_SECRET = originalAuthTokenSecret;
     vi.clearAllMocks();
   });
 
