@@ -33,7 +33,8 @@ export class RateLimitGuard implements CanActivate {
     this.cleanup(now);
 
     const method = request.method.toUpperCase();
-    const route = request.route?.path ?? request.path;
+    const rawRoute = request.route?.path ?? request.path;
+    const route = rawRoute.startsWith('/api/') ? rawRoute : request.baseUrl + rawRoute;
     const bucket = this.bucketFor(method, route);
     if (!bucket) return true;
 
@@ -58,10 +59,10 @@ export class RateLimitGuard implements CanActivate {
   }
 
   private bucketFor(method: string, route: string) {
-    if (method === 'POST' && (route === '/api/auth/login' || route === '/api/auth/register')) {
+    if (method === 'POST' && (route.endsWith('/login') || route.endsWith('/register'))) {
       return { name: 'auth', max: this.intEnv('AUTH_RATE_LIMIT_MAX', 10, 1, 100), windowMs: this.intEnv('AUTH_RATE_LIMIT_WINDOW_MS', 60_000, 1_000, 3_600_000) };
     }
-    if (method === 'POST' && route === '/api/ai/generate') {
+    if (method === 'POST' && route.endsWith('/generate')) {
       return { name: 'generation', max: this.intEnv('GENERATION_RATE_LIMIT_MAX', 20, 1, 500), windowMs: this.intEnv('GENERATION_RATE_LIMIT_WINDOW_MS', 60_000, 1_000, 3_600_000) };
     }
     return { name: 'default', max: this.intEnv('API_RATE_LIMIT_MAX', 120, 1, 10_000), windowMs: this.intEnv('API_RATE_LIMIT_WINDOW_MS', 60_000, 1_000, 3_600_000) };
