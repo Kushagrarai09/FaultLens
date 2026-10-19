@@ -10,10 +10,12 @@ import { loadRuntimeConfig } from '../config/runtime-config.js';
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
   private readonly pool: Pool | null;
+  private readonly healthTimeoutMs: number;
 
   constructor() {
     const config = loadRuntimeConfig();
     const connectionString = config.databaseUrl;
+    this.healthTimeoutMs = config.pgHealthTimeoutMs;
     this.pool = new Pool({
       connectionString,
       max: config.pgPoolMax,
@@ -29,7 +31,7 @@ export class DatabaseService implements OnModuleDestroy {
       throw new ServiceUnavailableException('Database is not configured. Set DATABASE_URL.');
     }
     try {
-      await this.pool.query({ text: 'SELECT 1', query_timeout: loadRuntimeConfig().pgHealthTimeoutMs });
+      await this.pool.query({ text: 'SELECT 1', query_timeout: this.healthTimeoutMs });
     } catch {
       throw new ServiceUnavailableException('PostgreSQL health check failed.');
     }
