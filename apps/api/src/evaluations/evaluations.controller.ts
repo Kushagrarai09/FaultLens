@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { AccessTokenGuard } from '../auth/access-token.guard.js';
-import { RateLimitGuard } from '../common/rate-limit.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthPrincipal } from '../auth/auth.types.js';
 import { WorkspaceRoles } from '../auth/roles.decorator.js';
@@ -8,7 +7,7 @@ import { WorkspaceRolesGuard } from '../auth/workspace-roles.guard.js';
 import { EvaluationsService } from './evaluations.service.js';
 
 @Controller('api')
-@UseGuards(AccessTokenGuard, WorkspaceRolesGuard, RateLimitGuard)
+@UseGuards(AccessTokenGuard, WorkspaceRolesGuard)
 export class EvaluationsController {
   constructor(private readonly evaluationsService: EvaluationsService) {}
 
