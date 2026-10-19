@@ -4,6 +4,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module.js';
 import { StructuredLogger } from './common/structured-logger.js';
 import { requestIdMiddleware } from './common/request-id.middleware.js';
+import { SanitizedExceptionFilter } from './common/sanitized-exception.filter.js';
 
 function validateConfiguration() {
   const requiredSecret = process.env.AUTH_TOKEN_SECRET;
@@ -83,7 +84,7 @@ async function bootstrap() {
     credentials: false,
     maxAge: 600,
   });
-  app.useGlobalFilters(new (await import('./common/sanitized-exception.filter.js')).SanitizedExceptionFilter());
+  app.useGlobalFilters(new SanitizedExceptionFilter());
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     transform: true,
