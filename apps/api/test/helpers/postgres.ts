@@ -24,6 +24,7 @@ const migrationFiles = [
   '001_create_ai_runs.sql',
   '002_create_prompt_evaluations.sql',
   '003_create_alert_rules.sql',
+  '004_create_auth_workspaces.sql',
 ];
 
 const migrations = async () => {
@@ -83,14 +84,17 @@ const hasColumns = async (table: string, columns: string[]) => {
 
 const validateSchema = async () => {
   const required: Record<string, string[]> = {
-    ai_runs: ['id', 'provider', 'model', 'status', 'duration_ms', 'input_tokens', 'output_tokens', 'started_at', 'created_at'],
-    prompt_templates: ['id', 'name', 'model'],
+    ai_runs: ['id', 'workspace_id', 'provider', 'model', 'status', 'duration_ms', 'input_tokens', 'output_tokens', 'started_at', 'created_at'],
+    users: ['id', 'email', 'password_hash'],
+    workspaces: ['id', 'name', 'owner_user_id'],
+    workspace_members: ['workspace_id', 'user_id', 'role'],
+    prompt_templates: ['id', 'workspace_id', 'name', 'model'],
     prompt_versions: ['id', 'prompt_id', 'version', 'template'],
-    evaluation_datasets: ['id', 'name', 'description'],
+    evaluation_datasets: ['id', 'workspace_id', 'name', 'description'],
     evaluation_cases: ['id', 'dataset_id', 'input', 'expected_output'],
-    evaluation_runs: ['id', 'dataset_id', 'status', 'case_count'],
+    evaluation_runs: ['id', 'workspace_id', 'dataset_id', 'status', 'case_count'],
     evaluation_results: ['id', 'evaluation_run_id', 'prompt_version_id', 'status', 'score', 'duration_ms'],
-    alert_rules: ['id', 'name', 'metric', 'threshold', 'window_minutes', 'enabled'],
+    alert_rules: ['id', 'workspace_id', 'name', 'metric', 'threshold', 'window_minutes', 'enabled'],
   };
   for (const [table, columns] of Object.entries(required)) {
     await hasColumns(table, columns);
