@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
+import { loadRuntimeConfig } from '../config/runtime-config.js';
 
 type DependencyHealth = { status: 'ok' } | { status: 'error'; message: string };
 
@@ -17,11 +18,12 @@ export class HealthService {
   }
 
   async checkOllama(): Promise<DependencyHealth> {
-    const baseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
+    const config = loadRuntimeConfig();
+    const baseUrl = config.ollamaBaseUrl;
     try {
       const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/tags`, {
         method: 'GET',
-        signal: AbortSignal.timeout(this.timeoutMs()),
+        signal: AbortSignal.timeout(config.ollamaHealthTimeoutMs),
       });
       if (!response.ok) return { status: 'error', message: 'Ollama returned an unsuccessful health response.' };
       return { status: 'ok' };
@@ -41,13 +43,4 @@ export class HealthService {
     };
   }
 
-  private timeoutMs() {
-    const raw = process.env.OLLAMA_HEALTH_TIMEOUT_MS;
-    if (raw === undefined) return 2_000;
-    const value = Number(raw);
-    if (!Number.isSafeInteger(value) || value < 100 || value > 30_000) {
-      throw new Error('OLLAMA_HEALTH_TIMEOUT_MS must be an integer between 100 and 30000.');
-    }
-    return value;
-  }
 }
