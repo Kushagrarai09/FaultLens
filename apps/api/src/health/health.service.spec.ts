@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HealthService } from './health.service.js';
 import type { DatabaseService } from '../database/database.service.js';
 
@@ -9,8 +9,6 @@ describe('HealthService', () => {
   const originalBaseUrl = process.env.OLLAMA_BASE_URL;
   const originalDatabaseUrl = process.env.DATABASE_URL;
   const originalAuthTokenSecret = process.env.AUTH_TOKEN_SECRET;
-  const originalDatabaseUrl = process.env.DATABASE_URL;
-  const originalAuthTokenSecretValue = process.env.AUTH_TOKEN_SECRET;
   beforeEach(() => {
     process.env.DATABASE_URL = 'postgresql://faultlens:password@localhost:5432/faultlens_test';
     process.env.AUTH_TOKEN_SECRET = 'random-test-secret-with-sufficient-length-for-validation';
@@ -24,10 +22,6 @@ describe('HealthService', () => {
     else process.env.DATABASE_URL = originalDatabaseUrl;
     if (originalAuthTokenSecret === undefined) delete process.env.AUTH_TOKEN_SECRET;
     else process.env.AUTH_TOKEN_SECRET = originalAuthTokenSecret;
-    if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL;
-    else process.env.DATABASE_URL = originalDatabaseUrl;
-    if (originalAuthTokenSecretValue === undefined) delete process.env.AUTH_TOKEN_SECRET;
-    else process.env.AUTH_TOKEN_SECRET = originalAuthTokenSecretValue;
     vi.clearAllMocks();
   });
 
