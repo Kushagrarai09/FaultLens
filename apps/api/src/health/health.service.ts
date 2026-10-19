@@ -6,6 +6,8 @@ type DependencyHealth = { status: 'ok' } | { status: 'error'; message: string };
 
 @Injectable()
 export class HealthService {
+  private readonly config = loadRuntimeConfig();
+
   constructor(private readonly database: DatabaseService) {}
 
   async checkDatabase(): Promise<DependencyHealth> {
@@ -18,12 +20,11 @@ export class HealthService {
   }
 
   async checkOllama(): Promise<DependencyHealth> {
-    const config = loadRuntimeConfig();
-    const baseUrl = config.ollamaBaseUrl;
+    const baseUrl = this.config.ollamaBaseUrl;
     try {
       const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/tags`, {
         method: 'GET',
-        signal: AbortSignal.timeout(config.ollamaHealthTimeoutMs),
+        signal: AbortSignal.timeout(this.config.ollamaHealthTimeoutMs),
       });
       if (!response.ok) return { status: 'error', message: 'Ollama returned an unsuccessful health response.' };
       return { status: 'ok' };
