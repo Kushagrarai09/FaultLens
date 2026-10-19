@@ -16,7 +16,7 @@ async function bootstrap() {
   const express = app.getHttpAdapter().getInstance();
   const expressModule = await import('express');
   express.use(expressModule.json({ limit: configuration.requestBodyLimit, strict: true }));
-  express.use(expressModule.urlencoded({ extended: false, limit: process.env.REQUEST_BODY_LIMIT ?? '256kb', parameterLimit: 100 }));
+  express.use(expressModule.urlencoded({ extended: false, limit: configuration.requestBodyLimit, parameterLimit: 100 }));
 
 
 
@@ -73,10 +73,7 @@ async function bootstrap() {
 
   const configuredOrigins = configuration.corsOrigins;
   app.enableCors({
-    origin(origin, callback) {
-      if (!origin || configuredOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error('Origin is not allowed by CORS policy.'), false);
-    },
+    origin: configuredOrigins,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
     exposedHeaders: ['X-Request-Id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
