@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
-import { loadApiConfiguration } from '../common/configuration.js';
 
 type DependencyHealth = { status: 'ok' } | { status: 'error'; message: string };
 
@@ -18,7 +17,7 @@ export class HealthService {
   }
 
   async checkOllama(): Promise<DependencyHealth> {
-    const baseUrl = loadApiConfiguration().ollamaBaseUrl;
+    const baseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
     try {
       const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/tags`, {
         method: 'GET',
