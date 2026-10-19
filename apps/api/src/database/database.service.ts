@@ -11,6 +11,7 @@ import { loadRuntimeConfig } from '../config/runtime-config.js';
 export class DatabaseService implements OnModuleDestroy {
   private readonly pool: Pool | null;
   private readonly healthTimeoutMs: number;
+  private readonly healthTimeoutMs: number;
 
   constructor() {
     const config = loadRuntimeConfig();
