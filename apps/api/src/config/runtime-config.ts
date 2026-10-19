@@ -7,12 +7,29 @@ export interface RuntimeConfig {
   ollamaBaseUrl: string;
   allowedOrigins: string[];
   requestTimeoutMs: number;
+  bodyLimitBytes: number;
   rateLimitWindowMs: number;
   rateLimitMax: number;
-  bodyLimitBytes: number;
+  authRateLimitWindowMs: number;
+  authRateLimitMax: number;
+  generationRateLimitWindowMs: number;
+  generationRateLimitMax: number;
+  pgPoolMax: number;
+  pgConnectTimeoutMs: number;
+  pgIdleTimeoutMs: number;
+  pgQueryTimeoutMs: number;
+  pgStatementTimeoutMs: number;
+  pgHealthTimeoutMs: number;
+  ollamaHealthTimeoutMs: number;
 }
 
-const integer = (value: string | undefined, fallback: number, min: number, max: number, name: string): number => {
+const integer = (
+  value: string | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+  name: string,
+): number => {
   if (value === undefined || value.trim() === '') return fallback;
   if (!/^\d+$/.test(value)) {
     throw new ServiceUnavailableException('Configuration ' + name + ' must be an integer.');
@@ -42,10 +59,14 @@ const httpUrl = (value: string, name: string): string => {
 
 export const loadRuntimeConfig = (env: NodeJS.ProcessEnv = process.env): RuntimeConfig => {
   const port = integer(env.PORT, 3001, 1, 65535, 'PORT');
-  const requestTimeoutMs = integer(env.API_REQUEST_TIMEOUT_MS, 30_000, 1_000, 120_000, 'API_REQUEST_TIMEOUT_MS');
+  const requestTimeoutMs = integer(env.API_REQUEST_TIMEOUT_MS, 65_000, 1_000, 180_000, 'API_REQUEST_TIMEOUT_MS');
+  const bodyLimitBytes = integer(env.API_BODY_LIMIT_BYTES, 262_144, 1_024, 10_485_760, 'API_BODY_LIMIT_BYTES');
   const rateLimitWindowMs = integer(env.API_RATE_LIMIT_WINDOW_MS, 60_000, 1_000, 3_600_000, 'API_RATE_LIMIT_WINDOW_MS');
-  const rateLimitMax = integer(env.API_RATE_LIMIT_MAX, 100, 1, 10_000, 'API_RATE_LIMIT_MAX');
-  const bodyLimitBytes = integer(env.API_BODY_LIMIT_BYTES, 1_048_576, 1_024, 10_485_760, 'API_BODY_LIMIT_BYTES');
+  const rateLimitMax = integer(env.API_RATE_LIMIT_MAX, 120, 1, 10_000, 'API_RATE_LIMIT_MAX');
+  const authRateLimitWindowMs = integer(env.AUTH_RATE_LIMIT_WINDOW_MS, 60_000, 1_000, 3_600_000, 'AUTH_RATE_LIMIT_WINDOW_MS');
+  const authRateLimitMax = integer(env.AUTH_RATE_LIMIT_MAX, 10, 1, 100, 'AUTH_RATE_LIMIT_MAX');
+  const generationRateLimitWindowMs = integer(env.GENERATION_RATE_LIMIT_WINDOW_MS, 60_000, 1_000, 3_600_000, 'GENERATION_RATE_LIMIT_WINDOW_MS');
+  const generationRateLimitMax = integer(env.GENERATION_RATE_LIMIT_MAX, 20, 1, 500, 'GENERATION_RATE_LIMIT_MAX');
 
   const databaseUrl = env.DATABASE_URL?.trim() ?? '';
   let parsedDb: URL;
@@ -83,6 +104,14 @@ export const loadRuntimeConfig = (env: NodeJS.ProcessEnv = process.env): Runtime
     }
   }
 
+  const pgPoolMax = integer(env.PG_POOL_MAX, 10, 1, 100, 'PG_POOL_MAX');
+  const pgConnectTimeoutMs = integer(env.PG_CONNECT_TIMEOUT_MS, 2_000, 100, 30_000, 'PG_CONNECT_TIMEOUT_MS');
+  const pgIdleTimeoutMs = integer(env.PG_IDLE_TIMEOUT_MS, 30_000, 1_000, 600_000, 'PG_IDLE_TIMEOUT_MS');
+  const pgQueryTimeoutMs = integer(env.PG_QUERY_TIMEOUT_MS, 5_000, 100, 120_000, 'PG_QUERY_TIMEOUT_MS');
+  const pgStatementTimeoutMs = integer(env.PG_STATEMENT_TIMEOUT_MS, 5_000, 100, 120_000, 'PG_STATEMENT_TIMEOUT_MS');
+  const pgHealthTimeoutMs = integer(env.PG_HEALTH_TIMEOUT_MS, 1_000, 100, 10_000, 'PG_HEALTH_TIMEOUT_MS');
+  const ollamaHealthTimeoutMs = integer(env.OLLAMA_HEALTH_TIMEOUT_MS, 2_000, 100, 30_000, 'OLLAMA_HEALTH_TIMEOUT_MS');
+
   return {
     port,
     authTokenSecret,
@@ -90,8 +119,19 @@ export const loadRuntimeConfig = (env: NodeJS.ProcessEnv = process.env): Runtime
     ollamaBaseUrl,
     allowedOrigins: [...new Set(allowedOrigins)],
     requestTimeoutMs,
+    bodyLimitBytes,
     rateLimitWindowMs,
     rateLimitMax,
-    bodyLimitBytes,
+    authRateLimitWindowMs,
+    authRateLimitMax,
+    generationRateLimitWindowMs,
+    generationRateLimitMax,
+    pgPoolMax,
+    pgConnectTimeoutMs,
+    pgIdleTimeoutMs,
+    pgQueryTimeoutMs,
+    pgStatementTimeoutMs,
+    pgHealthTimeoutMs,
+    ollamaHealthTimeoutMs,
   };
 };
