@@ -118,16 +118,43 @@ FaultLens/
 
 This is a high-level map; individual files and scripts may evolve as the project is implemented.
 
-## Getting started
+## Getting started locally
 
-**Use the release-readiness guide on the integration branch as the source of truth for local setup.** The phase branches are stacked and have not yet been fully verified from a clean checkout. Do not assume a green build until the GitHub Actions run passes.
+The fastest local path requires Docker Desktop with Compose:
 
-1. Install a supported Node.js version and pnpm.
-2. Clone the repository and enter its directory.
-3. Install dependencies with `pnpm install`.
-4. Inspect the root and app-level `package.json` scripts.
-5. Run the existing tests and start the frontend/API using the verified scripts.
-6. Record any missing environment variables or startup errors before adding new features.
+```powershell
+pnpm install --frozen-lockfile
+Copy-Item .env.example .env
+docker compose up --build
+```
+
+Open `http://localhost:3000`. PostgreSQL migrations run automatically before
+the API starts. The API is available at `http://localhost:3001`; Ollama is
+available at `http://localhost:11434`.
+
+To create local demo data, run this in a second PowerShell terminal:
+
+```powershell
+$env:DATABASE_URL = "postgresql://faultlens:faultlens_local_password@localhost:5432/faultlens"
+$env:NODE_ENV = "development"
+$env:ALLOW_DEVELOPMENT_SEED = "true"
+pnpm db:seed:dev
+```
+
+The default seeded account is `local@faultlens.test` with password
+`faultlens-local-password`. Change these values before sharing the environment.
+
+The optional worker profile can be started with:
+
+```powershell
+docker compose --profile worker up --build
+```
+
+Without Docker, start PostgreSQL and Ollama yourself, set `DATABASE_URL`,
+`AUTH_TOKEN_SECRET`, and `OLLAMA_BASE_URL`, then run `pnpm db:migrate`,
+`pnpm db:seed:dev`, `pnpm --filter api start:dev`, and
+`pnpm --filter web dev`. See [apps/api/README.md](apps/api/README.md) for
+configuration and PowerShell details.
 
 Repository: [FaultLens on GitHub](https://github.com/Kushagrarai09/FaultLens)
 

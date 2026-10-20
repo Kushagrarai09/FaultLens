@@ -5,7 +5,10 @@
   "description": "Production failure investigation and reliability platform",
   "packageManager": "pnpm@10.34.7",
   "scripts": {
-    "dev": "pnpm --parallel --filter web --filter api dev",
+    "dev": "docker compose up --build",
+    "dev:apps": "pnpm --parallel --filter web --filter api dev",
+    "db:migrate": "pnpm --filter api db:migrate",
+    "db:seed:dev": "pnpm --filter api db:seed:dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint"

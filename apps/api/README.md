@@ -2,7 +2,7 @@
 
 The FaultLens API is a NestJS application that powers the FaultLens prototype: AI-run ingestion and history, Ollama generation, token/latency analytics, prompt versions, evaluation datasets and comparisons, and threshold-based reliability alerts.
 
-> **Status:** MVP/prototype. The API now requires bearer-token authentication and applies workspace scoping, but security review, frontend login integration, rate limiting, audit logging, and broader production hardening are still outstanding. Do not treat this as production-ready.
+> **Status:** MVP/prototype. Bearer authentication, workspace scoping, and basic API hardening are implemented on feature branches; run the full tests and review CI before merging. The in-memory limiter is single-instance only. Do not treat the application as production-ready yet.
 
 ## Requirements
 
@@ -46,23 +46,48 @@ Using the frozen lockfile ensures installation fails instead of silently updatin
 
 ## Prepare PostgreSQL
 
-Create an empty `faultlens` database and apply the SQL migrations **in numeric order**:
+Create an empty `faultlens` database and run the migration runner:
 
 1. `apps/api/migrations/001_create_ai_runs.sql`
 2. `apps/api/migrations/002_create_prompt_evaluations.sql`
 3. `apps/api/migrations/003_create_alert_rules.sql`
 4. `apps/api/migrations/004_create_auth_workspaces.sql`
 
-For example, with PostgreSQL's `psql` client:
+The runner applies migrations in numeric order, records SHA-256 checksums in
+`faultlens_schema_migrations`, refuses to continue if an applied migration was
+edited, takes a PostgreSQL advisory lock, and validates all required tables:
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/001_create_ai_runs.sql
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/002_create_prompt_evaluations.sql
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/003_create_alert_rules.sql
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/004_create_auth_workspaces.sql
+pnpm --filter api db:migrate
 ```
 
-PowerShell can use the same commands if `psql` is installed and `DATABASE_URL` is available as an environment variable. The API currently assumes the schema exists; migrations are not automatically applied on startup. Do not run these against a database containing important data without reviewing the SQL first.
+PowerShell example:
+
+```powershell
+$env:DATABASE_URL = "postgresql://faultlens:password@localhost:5432/faultlens"
+pnpm --filter api db:migrate
+```
+
+The API also checks the required schema before listening and reports the exact
+migration command when tables are missing. Compose runs this migration command
+automatically before starting the API. Review migrations before applying them
+to an existing database.
+
+## Local development seed
+
+After migrations, create a deterministic local account and synthetic data:
+
+```powershell
+$env:NODE_ENV = "development"
+$env:ALLOW_DEVELOPMENT_SEED = "true"
+$env:DEV_SEED_EMAIL = "local@faultlens.test"
+$env:DEV_SEED_PASSWORD = "faultlens-local-password"
+pnpm --filter api db:seed:dev
+```
+
+The seed is idempotent for the configured email/workspace and creates sample
+AI runs, one prompt/version, and a two-case evaluation dataset. It refuses to
+run in production or unless `ALLOW_DEVELOPMENT_SEED=true` is explicitly set.
 
 ## PostgreSQL integration tests
 
@@ -93,6 +118,44 @@ The integration checks cover:
 - A sanitized HTTP 503 response when PostgreSQL is unreachable.
 
 The prompt-comparison integration test deliberately points Ollama to a closed local port; it tests durable error-result storage without requiring a live model. It does not verify successful real-model generation.
+
+## API hardening configuration
+
+The API boot validates `AUTH_TOKEN_SECRET`, `DATABASE_URL`, `PORT`, request timeout and body-size settings, allowed CORS origins, rate limits, dependency URLs, and PostgreSQL timeout/pool settings. It refuses to start if a required setting is invalid.
+
+| Setting | Default | Purpose |
+|---|---:|---|
+| `API_BODY_LIMIT_BYTES` | `262144` | JSON and URL-encoded body limit |
+| `API_REQUEST_TIMEOUT_MS` | `65000` | Server request timeout |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Comma-separated exact allowed origins |
+| `API_RATE_LIMIT_MAX` | `120` | Requests per IP/user in the default window |
+| `API_RATE_LIMIT_WINDOW_MS` | `60000` | Default rate window |
+| `AUTH_RATE_LIMIT_MAX` | `10` | Login/registration attempts in the auth window |
+| `AUTH_RATE_LIMIT_WINDOW_MS` | `60000` | Auth rate window |
+| `GENERATION_RATE_LIMIT_MAX` | `20` | Model generation requests in its window |
+| `GENERATION_RATE_LIMIT_WINDOW_MS` | `60000` | Generation rate window |
+| `PG_POOL_MAX` | `10` | Maximum PostgreSQL pool size |
+| `PG_CONNECT_TIMEOUT_MS` | `2000` | PostgreSQL connection timeout |
+| `PG_IDLE_TIMEOUT_MS` | `30000` | PostgreSQL idle connection timeout |
+| `PG_QUERY_TIMEOUT_MS` | `5000` | Driver query timeout |
+| `PG_STATEMENT_TIMEOUT_MS` | `5000` | PostgreSQL statement timeout |
+| `PG_HEALTH_TIMEOUT_MS` | `1000` | PostgreSQL health-check query timeout |
+| `OLLAMA_HEALTH_TIMEOUT_MS` | `2000` | Ollama health request timeout |
+
+`GET /health/live` is a liveness check that does not contact dependencies. `GET /health/ready` checks PostgreSQL and Ollama and returns HTTP 503 if either dependency is unavailable. The process can stay alive when PostgreSQL is down so the probe can distinguish liveness from readiness. Readiness currently requires both dependencies even for application routes that do not generate text.
+
+The application emits single-line JSON logs containing request ID, method, path (without query string), status and duration. Request bodies are not logged; inline bearer tokens and credentials embedded in URLs are redacted. Generic API errors are returned without stack traces or internal provider/database details. `X-Request-Id` is returned for support and correlation.
+
+The request-size and server-timeout controls use Express/Node HTTP settings. The in-memory fixed-window rate limiter is suitable only for one API process; it does not share counters between replicas and should be replaced with Redis-backed limiting before horizontally scaled production deployment. Exact CORS origins must be configured for the deployed web origin; do not add wildcards.
+
+Run hardening-focused tests with:
+
+```bash
+pnpm --filter api test:hardening
+pnpm --filter api build
+```
+
+These tests cover limiter behavior, dependency failures, health endpoints, and error/log redaction. They do not replace deployment-level load testing, a security review, or tests against the exact production proxy/network setup.
 
 ## Authentication and workspace authorization
 
@@ -180,7 +243,7 @@ Inspect the corresponding controller files under `apps/api/src/` for current rou
 ## Known limitations
 
 - Authentication and workspace-scoped API checks are implemented, but have not yet received a formal security review.
-- SQL migrations must be applied manually.
+- SQL migrations are applied with `pnpm --filter api db:migrate`; the API refuses to start against an incomplete schema.
 - Worker is a placeholder.
 - Alert evaluation is not continuous or scheduled.
 - End-to-end and browser integration coverage is incomplete.

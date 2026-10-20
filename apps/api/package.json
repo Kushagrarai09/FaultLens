@@ -21,8 +21,11 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:seed:dev": "node scripts/seed-dev.mjs",
     "db:test:migrate": "node scripts/migrate-test-db.mjs",
-    "test:integration": "vitest run --config ./vitest.config.integration.ts"
+    "test:integration": "vitest run --config ./vitest.config.integration.ts",
+    "test:hardening": "vitest run src/config src/security src/observability src/health src/database"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
