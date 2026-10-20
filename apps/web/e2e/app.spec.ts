@@ -69,7 +69,7 @@ test("login rejects invalid credentials and shows an accessible error", async ({
 test("registration creates a session and opens the dashboard", async ({ page }) => {
   await mockApi(page, { signedIn: false }); await page.goto("/register");
   await page.getByLabel("Email").fill("new-browser@example.test"); await page.getByLabel("Password").fill("a-long-browser-test-password");
-  await page.getByLabel("Workspace name").fill("Browser test workspace"); await page.getByRole("button", { name: "Create workspace" }).click();
+  await page.getByLabel("Workspace name").fill("Browser test workspace"); await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: /Run health at a glance/ })).toBeVisible();
 });
 
