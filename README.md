@@ -1,138 +1,36 @@
 # FaultLens
 
-**A phased AI observability and prompt-evaluation platform.**
+FaultLens is a monorepo MVP for AI-run metadata, Ollama generation, token/latency analytics, prompt versioning and evaluation, and manual threshold-based reliability alerts.
 
-FaultLens is being built to help developers understand how AI-powered features behave: which requests succeed or fail, how long they take, how much token usage they incur, and how prompt changes affect quality, latency, and estimated cost.
+> **Release status: not production-ready.** Browser checks and CI are being added; PostgreSQL integration must pass on CI; live Ollama behavior and deployment security still need verification.
 
-> **Project status:** Feature implementation exists on stacked feature branches and is not yet release-verified. CI, migrations, model generation, and browser workflows must pass on the integrated branch before features should be described as verified. The application is not production-ready. The API now has initial bearer-token authentication and workspace-scoped authorization on protected data routes, but it still needs independent security review, frontend sign-in integration, abuse protections, and full CI/runtime verification.
+## Implemented MVP (source-level; verify in CI)
+- PostgreSQL-backed AI-run metadata and history.
+- Ollama generation endpoint; generation prompts and responses are not persisted in AI-run history.
+- Per-workspace run, latency, and token analytics.
+- Versioned prompt templates, evaluation datasets, and prompt comparisons. The current comparison score is a simple word-overlap heuristic, not semantic correctness.
+- Manual/on-demand threshold alert rules. Alerts are not scheduled and do not deliver notifications.
+- API bearer-token authentication and workspace-scoped authorization, plus frontend login/register/logout and workspace selection on the integration branch.
+- Local Docker Compose orchestration, migration runner with checksums/schema validation, and opt-in development seed data.
 
-## Why FaultLens?
+## Not implemented / not release-verified
+- Background worker processing, queued evaluations, and scheduled alert checks. The placeholder worker has been removed from the MVP; synchronous API operations remain.
+- Alert notification delivery, incident management, deployment/change correlation, distributed tracing, automated root-cause analysis, or historical failure intelligence.
+- Verified model pricing configuration and real cost calculation. Cost remains unknown (`null`) when no verified price is configured; never infer unknown cost as zero.
+- Production multi-instance rate limiting, complete audit logging, secret-manager integration, backup/restore and rollback runbooks, full CSRF strategy, reverse-proxy/TLS setup, production CORS settings, container image scanning, and complete request/response tracing.
+- Full browser workflows against a real database/provider. The Playwright suite uses mocked API replies to exercise UI behavior; PostgreSQL tests run as a separate CI job, and live Ollama remains an explicit manual integration check.
 
-Connecting an application to an AI model is only the first step. Developers also need to answer practical questions:
+## Local development (Windows PowerShell)
 
-- Which AI requests failed, and when?
-- Which requests are slow?
-- How much token usage did requests consume?
-- What is the estimated cost, when reliable usage and pricing data are available?
-- Did a new prompt improve results, or did it increase latency and cost?
-
-FaultLens aims to make these questions answerable from one small, understandable dashboard.
-
-## MVP: Three core capabilities
-
-### 1. AI request monitoring
-- Browse request history and outcomes.
-- Inspect model name, duration, and available token usage.
-- View request details without exposing sensitive content by default.
-
-### 2. Cost and performance analytics
-- Summarize total, successful, and failed requests.
-- Calculate average latency and useful latency percentiles.
-- Summarize available token usage.
-- Estimate cost only when the required usage data and documented pricing are available; otherwise show it as unknown.
-
-### 3. Prompt versioning and evaluation
-- Save and identify prompt versions.
-- Build a small dataset of representative test inputs.
-- Run the same dataset against different prompt versions.
-- Compare evaluation scores, failures, latency, and estimated cost.
-
-Prompt comparison is intended to be FaultLens's key differentiator: help developers make evidence-based decisions about prompt quality instead of relying only on manual spot checks.
-
-## Planned architecture
-
-FaultLens will remain a **simple monorepo and modular application** for the MVP. We are not starting with microservices.
-
-```text
-AI application / test runner
-          |
-          v
-     FaultLens API  <---->  One AI model provider
-       (NestJS)
-          |
-          v
-      PostgreSQL
-          ^
-          |
-   Next.js dashboard
-
-TypeScript worker: retained for future background jobs;
-not required for the first synchronous MVP workflow.
-```
-
-### Technology choices
-
-| Component | Planned role |
-|---|---|
-| Next.js + TypeScript | Dashboard and request/evaluation views |
-| NestJS + TypeScript | API, validation, provider integration, and application logic |
-| PostgreSQL | Persistent AI-run records, prompt versions, datasets, and evaluation results |
-| One AI provider | First real model integration after synthetic request tracking works |
-| TypeScript worker | Reserved for background processing when it becomes necessary |
-| Tests | Verify validation, persistence, provider error handling, evaluation, and key user flows |
-
-The repository contains the frontend, API, PostgreSQL persistence, Ollama generation, analytics, prompt evaluation, and reliability-alert implementations on feature branches. They still need integration and verification in a clean checkout.
-
-## Development roadmap
-
-We will build one working milestone at a time. A phase is complete only when its behavior has been tested and documented.
-
-| Phase | Goal | Expected result |
-|---|---|---|
-| 0. Repository baseline | Run the existing apps, inspect scripts/configuration, and record current behavior | Reproducible local setup |
-| 1. Request ingestion | Define and validate synthetic AI-run records; add PostgreSQL persistence and retrieval APIs | Runs can be stored and retrieved |
-| 2. Dashboard | Connect the Next.js interface to the API and show history, outcomes, latency, and details | A usable dashboard backed by real stored data |
-| 3. Real AI integration | Integrate one provider and record actual outcomes, duration, and available usage | Real model calls appear in run history |
-| 4. Analytics | Add request summaries, latency statistics, token summaries, and defensible cost estimates | Developers can understand usage and performance |
-| 5. Prompt evaluation | Store prompt versions and datasets; compare versions on the same inputs | Repeatable prompt-comparison workflow |
-| 6. Advanced observability | Add selected enhancements such as OpenTelemetry, background jobs, and alerts | Improved diagnostics, only where useful and testable |
-| 7. Release and portfolio | Add CI checks, deployment, demo data, documentation, and a walkthrough | A reproducible, demonstrable release |
-
-### What we are intentionally postponing
-
-To keep the first release manageable, the MVP will not start with multiple providers, Redis/BullMQ, distributed tracing, automated alerts, complex incident management, or AI-generated root-cause analysis. These can be considered later if the working product demonstrates a clear need.
-
-## Privacy and reliability principles
-
-- Never commit API keys, credentials, or other secrets.
-- AI generation stores run metadata only; the generation prompt and returned response are not written to `ai_runs`.
-- Prompt templates and evaluation datasets/cases are stored intentionally for repeatable evaluation. Do not enter personal, customer, or confidential data unless you are comfortable storing it in the configured PostgreSQL database.
-- Validate incoming data and sanitize errors before storing or displaying them.
-- Treat missing token usage or pricing as unknown rather than silently recording zero.
-- API authentication and workspace-level data scoping have been added on the Phase 3 security branch. They have not yet been independently reviewed or verified by a completed CI run; do not expose the app publicly.
-- Test important success and failure paths, not just the happy path.
-- Do not describe a feature as verified until CI or runtime evidence confirms it.
-
-## Repository layout
-
-```text
-FaultLens/
-├── apps/
-│   ├── web/       # Next.js frontend
-│   ├── api/       # NestJS backend
-│   └── worker/    # TypeScript worker starter
-├── docs/
-│   └── roadmap/   # Project plan and baseline notes
-└── ...
-```
-
-This is a high-level map; individual files and scripts may evolve as the project is implemented.
-
-## Getting started locally
-
-The fastest local path requires Docker Desktop with Compose:
+Requirements: Docker Desktop with Compose, Node.js 22, and pnpm 10.
 
 ```powershell
-pnpm install --frozen-lockfile
+pnpm install --no-frozen-lockfile
 Copy-Item .env.example .env
 docker compose up --build
 ```
 
-Open `http://localhost:3000`. PostgreSQL migrations run automatically before
-the API starts. The API is available at `http://localhost:3001`; Ollama is
-available at `http://localhost:11434`.
-
-To create local demo data, run this in a second PowerShell terminal:
+Open `http://localhost:3000`. The API is exposed on `http://localhost:3001`, PostgreSQL on port 5432, and Ollama on port 11434. The API container applies migrations before starting. On a second terminal, seed synthetic local-only data with a disposable local database:
 
 ```powershell
 $env:DATABASE_URL = "postgresql://faultlens:faultlens_local_password@localhost:5432/faultlens"
@@ -141,108 +39,35 @@ $env:ALLOW_DEVELOPMENT_SEED = "true"
 pnpm db:seed:dev
 ```
 
-The default seeded account is `local@faultlens.test` with password
-`faultlens-local-password`. Change these values before sharing the environment.
+The default seed credentials are for local development only. Change them in any environment that is shared or exposed. Never commit `.env` or real secrets.
 
-The optional worker profile can be started with:
+## Verification commands
 
 ```powershell
-docker compose --profile worker up --build
+pnpm --filter api test
+pnpm --filter api test:hardening
+pnpm --filter api build
+pnpm --filter api lint
+pnpm --filter api db:test:migrate
+pnpm --filter api test:integration
+pnpm --filter api test:e2e
+pnpm --filter web lint
+pnpm --filter web build
+pnpm --filter web test:e2e
 ```
 
-Without Docker, start PostgreSQL and Ollama yourself, set `DATABASE_URL`,
-`AUTH_TOKEN_SECRET`, and `OLLAMA_BASE_URL`, then run `pnpm db:migrate`,
-`pnpm db:seed:dev`, `pnpm --filter api start:dev`, and
-`pnpm --filter web dev`. See [apps/api/README.md](apps/api/README.md) for
-configuration and PowerShell details.
+PostgreSQL integration commands require `TEST_DATABASE_URL` pointed only at a disposable database whose name contains `test`, `testing`, or `integration`. The browser Playwright suite starts Next.js locally and mocks API routes, so it does not prove real backend/database/provider integration. CI makes this distinction explicit; check the Actions results before considering a milestone verified.
 
-Repository: [FaultLens on GitHub](https://github.com/Kushagrarai09/FaultLens)
+## Architecture decision: no worker in MVP
 
-As implementation progresses, this section will be replaced with tested, exact commands, environment-variable documentation, and any database setup steps required for the current phase.
+Generation, evaluation, and alert evaluation remain synchronous request/response operations. The previous worker only printed a startup message and did not process jobs; its package and architecture hooks have been removed. Revisit BullMQ/Redis only when a real asynchronous workload, retries, dead-letter handling, and operational requirements are designed.
 
-## Phase 1 API (in progress)
+## Cost behavior
 
-The first backend milestone adds a synthetic AI-run ingestion API backed by PostgreSQL.
+Analytics currently returns an unknown/unavailable cost unless a verified provider/model/token pricing configuration exists. Proper versioned prices, currency handling, missing-usage semantics, and associated tests are future work. A missing price is never treated as a zero cost.
 
-- `POST /api/runs` — validate and save synthetic run metadata.
-- `GET /api/runs?limit=20&offset=0` — list runs, newest first, with pagination.
-- `GET /api/runs/:id` — retrieve one run by UUID.
-- `GET /` — existing greeting endpoint.
+## CI and release readiness
 
-The API stores metadata only; raw prompts and model responses are not accepted. To configure the database, create a PostgreSQL database, set `DATABASE_URL`, and apply [the Phase 1 migration](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-1-ai-run-ingestion/apps/api/migrations/001_create_ai_runs.sql). Full setup and example requests are documented in [the Phase 1 guide](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-1-ai-run-ingestion/docs/roadmap/PHASE-1.md).
+See `.github/workflows/ci.yml` and [Phase 7 release-readiness checklist](docs/roadmap/PHASE-7.md). CI runs fresh-checkout installation, API unit/hardening tests and build/lint, web lint/build, Playwright browser tests with mocked APIs, disposable PostgreSQL migration/integration tests, and dependency/secret checks. The lockfile is not yet verified with a frozen install; CI deliberately uses `pnpm install --no-frozen-lockfile` until lockfile regeneration is committed.
 
-This feature is under implementation and must pass local build, database, and API tests before it is considered complete.
-
-## Phase 2 dashboard (in progress)\n\nThe dashboard in the Phase 2 feature branch includes recent-run metrics, a reliability snapshot, searchable and filterable run history, refresh/error/empty states, and a synthetic demo-run button. The Next.js route handler proxies requests to the NestJS API. Run the API on port 3001 and the web app on port 3000; see [the Phase 2 guide](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-2-observability-dashboard/docs/roadmap/PHASE-2.md). Metrics describe only the latest 50 records. No prompt/response content or estimated costs are shown. This phase still needs local build and browser verification.\n\n## Phase 3 local model integration (in progress)\n\nPhase 3 adds an Ollama-backed generation endpoint and a local-model playground. Real generations return their response to the browser while persisting only run metadata (provider, model, status, duration, available token counts, and sanitized error code). Prompts and responses are not written to the FaultLens database. See [the Phase 3 guide](https://github.com/Kushagrarai09/FaultLens/blob/feat/phase-3-ollama-integration/docs/roadmap/PHASE-3.md). This branch requires Ollama, PostgreSQL, and local build/test/browser verification before merge.\n\n## Phase 3 — Authentication and workspace authorization (in progress)
-
-The Phase 3 branch introduces email/password registration and login, one-hour signed bearer access tokens, user/workspace membership with owner/admin/member/viewer roles, and workspace-scoped API queries for runs, analytics, prompt versions, datasets, evaluations, and alert rules. Existing records are moved into a legacy workspace with no members instead of being exposed to new users.
-
-- Apply `apps/api/migrations/004_create_auth_workspaces.sql` after migrations 001–003.
-- Set a unique `AUTH_TOKEN_SECRET` of at least 32 characters.
-- Protected API endpoints require `Authorization: Bearer <accessToken>`.
-- The integration suite adds cross-workspace and role checks, but Phase 3 is not complete until CI passes and the implementation is reviewed.
-- The Next.js UI does not yet provide a full login experience. Rate limiting, account recovery, email verification, audit logging, and a formal security review are also outstanding.
-
-## Contributing and tracking progress
-
-Development is organized through repository issues and the implementation roadmap:
-
-- [Implementation roadmap](https://github.com/Kushagrarai09/FaultLens/blob/main/docs/roadmap/AI-OBSERVABILITY-ROADMAP.md)
-- [Phase 0: Audit the existing setup](https://github.com/Kushagrarai09/FaultLens/issues/2)
-- [Feature priorities based on the code audit](https://github.com/Kushagrarai09/FaultLens/issues/3)
-- [Phase 1: Synthetic AI-run ingestion API](https://github.com/Kushagrarai09/FaultLens/issues/4)
-
-When contributing, keep changes focused, add tests for behavior that changes, update documentation, and avoid introducing infrastructure before a concrete requirement exists.
-
-## Definition of MVP completion
-
-The MVP will be considered ready for its first release when a developer can:
-
-1. Start FaultLens using documented local instructions.
-2. Record successful and failed AI runs and retain them in PostgreSQL across restarts.
-3. Browse, filter, and inspect runs in the dashboard.
-4. Observe real calls through at least one AI provider.
-5. Review available latency and token-usage metrics, with transparent cost estimates where possible.
-6. Save prompt versions and compare them using the same evaluation dataset.
-7. Run the critical tests and access an accurate deployed demo or recorded walkthrough.
-
-OpenTelemetry, sophisticated alerting, and background job infrastructure are enhancements—not prerequisites for the first usable release.
-
----
-
-**Current focus:** Verify Phases 1–3 locally, including PostgreSQL persistence and real local Ollama generation, before merging. Cost analytics and prompt evaluations remain future phases.
-
-
-## Phase 5 — Prompt versioning and evaluation (in progress)
-
-Phase 5 adds prompt templates with immutable numbered versions, reusable evaluation datasets, and a comparison workflow that runs the same examples against 2–4 selected prompt versions using Ollama. Results include a clearly labeled heuristic word-overlap score, successful/failed calls, latency, and known token usage per version.
-
-- Apply [the Phase 5 database migration](apps/api/migrations/002_create_prompt_evaluations.sql) after the Phase 1 migration.
-- Open `http://localhost:3000/evaluations` after starting the API, web app, PostgreSQL, and Ollama.
-- Read the [Phase 5 guide](docs/roadmap/PHASE-5.md) for endpoints, request examples, metric definitions, privacy notes, and the local verification checklist.
-
-Prompt templates and authored evaluation examples are stored intentionally. Generated response text is not persisted. The initial score measures word overlap with the expected output; it is a rough regression signal, not semantic correctness. This implementation has not yet been built or tested locally and must remain unmerged until verification passes.
-
-
-## Phase 6 — Reliability alerts (in progress)
-
-Phase 6 adds configurable metadata-based reliability rules. Developers can define thresholds for failure rate, P95 latency, or failed-run count over a 5-minute to 24-hour window, then evaluate enabled rules against recent stored AI runs.
-
-- Dashboard: `http://localhost:3000/alerts`
-- API: `GET/POST /api/alerts/rules`, `PATCH /api/alerts/rules/:id`, and `POST /api/alerts/evaluate`.
-- Apply [the Phase 6 migration](apps/api/migrations/003_create_alert_rules.sql) after the Phase 1 migration.
-- Read the [Phase 6 guide](docs/roadmap/PHASE-6.md) for supported metrics, API examples, setup, and limitations.
-
-This is on-demand evaluation, not continuous monitoring. It does not send external notifications or store alert-event history. It uses metadata only and does not store prompts or generated responses. Builds, tests, migration, and browser checks have not yet been run locally; keep the PR in draft until verification passes.
-
-
-## Phase 7 — Release readiness (in progress)
-
-Phase 7 adds GitHub Actions checks, an optional synthetic demo-run seed, an environment-variable example, an API liveness endpoint, and a release walkthrough checklist. See [the Phase 7 guide](docs/roadmap/PHASE-7.md).
-
-- CI workflow: `.github/workflows/ci.yml`
-- API liveness endpoint: `GET /health`
-- Optional synthetic demo data: `apps/api/seeds/demo_runs.sql`
-- Environment template: `.env.example`
-
-This phase has not yet passed remote CI or local build, database, and browser verification. Authentication and workspace checks now exist in the Phase 3 branch, but remain unreviewed and need a UI login flow and more production hardening. Do not expose the app publicly yet.
+No public deployment should be considered safe until the outstanding controls in the Phase 7 checklist are verified.

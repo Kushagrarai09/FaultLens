@@ -2,13 +2,14 @@
   "name": "faultlens",
   "version": "0.1.0",
   "private": true,
-  "description": "Production failure investigation and reliability platform",
+  "description": "A phased AI observability and prompt-evaluation platform",
   "packageManager": "pnpm@10.34.7",
   "scripts": {
     "dev": "docker compose up --build",
     "dev:apps": "pnpm --parallel --filter web --filter api dev",
     "db:migrate": "pnpm --filter api db:migrate",
     "db:seed:dev": "pnpm --filter api db:seed:dev",
+    "test:e2e:browser": "pnpm --filter web test:e2e",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint"
