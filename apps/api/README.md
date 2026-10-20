@@ -1,192 +1,59 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# FaultLens API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS API for AI-run metadata/history, Ollama generation, workspace-scoped analytics, prompt versioning/evaluation, and on-demand reliability alerts.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+> **Status:** MVP/prototype, not production-ready. Frontend authentication and workspace UX exist on the current integration branch, but require CI/browser verification and independent security review. Rate limiting is in-memory and single-instance only.
 
-## Description
+## Requirements and configuration
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Node.js 22 and pnpm 10.34.7
+- PostgreSQL; Ollama for real generation/evaluation
+- `DATABASE_URL`, `AUTH_TOKEN_SECRET` (random secret of at least 32 characters), `PORT`, `OLLAMA_BASE_URL`
+- Never commit `.env`, access tokens, or database credentials.
 
-## Project setup
+## Local PostgreSQL migrations
 
-```bash
-$ pnpm install
-```
-
-## Compile and run the project
-
-```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-<<<<<<< Updated upstream
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-=======
-```bash
-pnpm --filter api dev
-```
-
-The API defaults to port `3001` through the example configuration. Start Ollama separately and ensure the configured model is available before trying generation or evaluations.
-
-## Verification commands
-
-Run these from the repository root:
-
-```bash
-# Deterministic API unit tests
-pnpm --filter api test
-
-# HTTP API end-to-end tests
-pnpm --filter api test:e2e
-
-# API static analysis
-pnpm --filter api lint
-
-# API production build
-pnpm --filter api build
-
-# Build every workspace package, including the worker and web app
-pnpm build
-```
-
-The HTTP end-to-end suite uses the disposable PostgreSQL database from
-`TEST_DATABASE_URL`. It covers registration/login, bearer authentication,
-workspace isolation, run creation/retrieval/pagination, analytics, mocked
-Ollama success and unavailable-provider behavior, prompt versions, datasets,
-comparisons, alerts, validation errors, sanitized database failures, CORS,
-request-size limits, rate limits, and expired tokens. When
-`TEST_DATABASE_URL` is not set, the suite skips rather than touching a local
-database:
+Run the production/development migration command against the configured database:
 
 ```powershell
-$env:TEST_DATABASE_URL = "postgresql://faultlens:password@localhost:5432/faultlens_test"
-$env:DATABASE_URL = $env:TEST_DATABASE_URL
-$env:AUTH_TOKEN_SECRET = "integration-only-secret-do-not-use-outside-tests-32chars"
+$env:DATABASE_URL = "postgresql://faultlens:password@localhost:5432/faultlens"
+pnpm --filter api db:migrate
+```
+
+The migration runner applies SQL files in numeric order, records SHA-256 checksums in `faultlens_schema_migrations`, takes a PostgreSQL advisory lock, rejects changed applied migrations, and checks required tables. The API refuses to start if the schema is missing required tables. Review SQL before applying it to any database with important data.
+
+Do not use `db:test:migrate` for development or production. The script `scripts/migrate-test-db.mjs` is restricted to disposable database names containing `test`, `testing`, or `integration`.
+
+## Development seed
+
+Only for disposable local development:
+
+```powershell
+$env:NODE_ENV = "development"
+$env:ALLOW_DEVELOPMENT_SEED = "true"
+$env:DEV_SEED_EMAIL = "local@faultlens.test"
+$env:DEV_SEED_PASSWORD = "replace-with-a-local-password"
+pnpm --filter api db:seed:dev
+```
+
+The seed creates a local user/workspace, sample runs, a prompt/version, and evaluation data. It refuses production mode and requires explicit opt-in. Never use example credentials for any exposed/shared environment.
+
+## Tests
+
+```powershell
+pnpm --filter api test
+pnpm --filter api test:hardening
+pnpm --filter api build
+pnpm --filter api lint
 pnpm --filter api db:test:migrate
 pnpm --filter api test:integration
 pnpm --filter api test:e2e
 ```
 
-The root commands are also available:
+Set `TEST_DATABASE_URL` to a disposable test database before integration tests; the test migration utility validates the database name and schema. CI's PostgreSQL service performs migration validation and integration tests against an isolated database. Browser tests are in `apps/web/e2e` and stub backend routes; those tests are not a substitute for live PostgreSQL or Ollama verification.
 
-```bash
-pnpm test
-pnpm lint
-pnpm build
-```
+## MVP capabilities and limitations
 
-The worker currently only logs a startup message; it does not process queued work. Passing builds and unit tests are not evidence of full production readiness. The current end-to-end test does not validate PostgreSQL persistence, Ollama generation, prompt evaluation, analytics, or browser flows.
+Implemented: AI-run metadata, Ollama generation, token/latency summaries, versioned prompts, evaluation datasets/comparisons, manual threshold alerts, authentication, and workspace-scoped API authorization (subject to tests/security review).
 
-## Implemented API areas
-
-The NestJS controllers are organized by feature:
-
-- **Runs:** run ingestion, generation, and history.
-- **Analytics:** latency and token usage aggregates. Cost remains unavailable unless pricing is implemented/configured.
-- **Evaluations:** prompt templates and versions, datasets/cases, comparisons, and evaluation history.
-- **Alerts:** threshold rules and manual evaluation.
-
-Inspect the corresponding controller files under `apps/api/src/` for current route definitions and request/response shapes. Routes may change while the project is an MVP.
-
-## Known limitations
-
-- Authentication and workspace-scoped API checks are implemented, but have not yet received a formal security review.
-- SQL migrations are applied with `pnpm --filter api db:migrate`; the API refuses to start against an incomplete schema.
-- Worker is a placeholder.
-- Alert evaluation is not continuous or scheduled.
-- End-to-end and browser integration coverage is incomplete.
-- Token-based estimated cost is not implemented.
-- Do not expose the API publicly until the remaining production controls are implemented and independently verified.
->>>>>>> Stashed changes
+Not implemented or not verified: worker/queue processing, scheduled alerts, notification delivery, incident management, distributed tracing, deployment correlation, automated root-cause analysis, historical failure intelligence, and verified real-cost calculation. Cost stays unknown when verified pricing is missing. There is no production-ready distributed rate limiter, complete audit/secret management, backup/restore and rollback runbook, full CSRF strategy, reverse-proxy/TLS config, or complete tracing. Keep the app private until release checks pass.

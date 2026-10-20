@@ -1,10 +1,14 @@
--- Optional Phase 7 demo data. Apply after migrations 001–003.
+-- Optional synthetic demo data. Apply after migrations 001–004.
+-- Requires the UUID of a workspace you control (never seed into legacy/unassigned data).
+-- Example:
+--   psql "$DATABASE_URL" -v workspace_id="<workspace UUID>" -f apps/api/seeds/demo_runs.sql
 -- Synthetic metadata only: no real prompts, responses, user data, or credentials.
--- Idempotent: if the marker provider already exists, this seed does nothing.
+-- Idempotent per workspace: rerunning this seed does not duplicate its marker rows.
 
 INSERT INTO ai_runs
-  (provider, model, status, duration_ms, input_tokens, output_tokens, error_code, started_at, created_at)
+  (workspace_id, provider, model, status, duration_ms, input_tokens, output_tokens, error_code, started_at, created_at)
 SELECT
+  :'workspace_id'::uuid,
   seed.provider,
   seed.model,
   seed.status,
@@ -26,5 +30,6 @@ FROM (
     ('faultlens-demo', 'qwen2.5:3b', 'success', 610, 33, 101, NULL::varchar, 44)
 ) AS seed(provider, model, status, duration_ms, input_tokens, output_tokens, error_code, age_minutes)
 WHERE NOT EXISTS (
-  SELECT 1 FROM ai_runs WHERE provider = 'faultlens-demo'
+  SELECT 1 FROM ai_runs
+  WHERE provider = 'faultlens-demo' AND workspace_id = :'workspace_id'::uuid
 );

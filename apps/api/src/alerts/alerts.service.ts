@@ -42,14 +42,15 @@ const toRule = (row: AlertRuleRow): AlertRuleDto => ({
 export class AlertsService {
   constructor(private readonly database: DatabaseService) {}
 
-  async listRules() {
+  async listRules(workspaceId: string) {
     const result = await this.database.query<AlertRuleRow>(
-      'SELECT id, name, metric, threshold, window_minutes, enabled, created_at, updated_at FROM alert_rules ORDER BY created_at DESC LIMIT 100',
+      'SELECT id, name, metric, threshold, window_minutes, enabled, created_at, updated_at FROM alert_rules WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT 100',
+      [workspaceId],
     );
     return { data: result.rows.map(toRule) };
   }
 
-  async createRule(value: unknown) {
+  async createRule(value: unknown, workspaceId: string) {
     if (!record(value)) throw new BadRequestException('Request body must be a JSON object.');
     if (typeof value.name !== 'string' || !value.name.trim() || value.name.trim().length > 120) {
       throw new BadRequestException('name must be a non-empty string of at most 120 characters.');
@@ -73,31 +74,32 @@ export class AlertsService {
       throw new BadRequestException('windowMinutes must be an integer between 5 and 1440.');
     }
     const result = await this.database.query<AlertRuleRow>(
-      `INSERT INTO alert_rules (name, metric, threshold, window_minutes)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO alert_rules (workspace_id, name, metric, threshold, window_minutes)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id, name, metric, threshold, window_minutes, enabled, created_at, updated_at`,
-      [value.name.trim(), metric, threshold, windowMinutes],
+      [workspaceId, value.name.trim(), metric, threshold, windowMinutes],
     );
     return toRule(result.rows[0]);
   }
 
-  async updateRule(idValue: unknown, value: unknown) {
+  async updateRule(idValue: unknown, value: unknown, workspaceId: string) {
     const id = this.parseUuid(idValue);
     if (!record(value) || typeof value.enabled !== 'boolean') {
       throw new BadRequestException('Request body must include enabled as a boolean.');
     }
     const result = await this.database.query<AlertRuleRow>(
-      `UPDATE alert_rules SET enabled = $1, updated_at = NOW() WHERE id = $2
+      `UPDATE alert_rules SET enabled = $1, updated_at = NOW() WHERE id = $2 AND workspace_id = $3
        RETURNING id, name, metric, threshold, window_minutes, enabled, created_at, updated_at`,
-      [value.enabled, id],
+      [value.enabled, id, workspaceId],
     );
     if (!result.rows[0]) throw new NotFoundException('Alert rule was not found.');
     return toRule(result.rows[0]);
   }
 
-  async evaluate() {
+  async evaluate(workspaceId: string) {
     const rulesResult = await this.database.query<AlertRuleRow>(
-      'SELECT id, name, metric, threshold, window_minutes, enabled, created_at, updated_at FROM alert_rules WHERE enabled = TRUE ORDER BY created_at DESC LIMIT 100',
+      'SELECT id, name, metric, threshold, window_minutes, enabled, created_at, updated_at FROM alert_rules WHERE enabled = TRUE AND workspace_id = $1 ORDER BY created_at DESC LIMIT 100',
+      [workspaceId],
     );
     const alerts: Array<{
       rule: AlertRuleDto;
@@ -117,8 +119,9 @@ export class AlertsService {
                 END AS failure_rate_percent,
                 percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms)::text AS p95_latency_ms
          FROM ai_runs
-         WHERE created_at >= NOW() - ($1::integer * INTERVAL '1 minute')`,
-        [rule.window_minutes],
+         WHERE created_at >= NOW() - ($1::integer * INTERVAL '1 minute')
+           AND workspace_id = $2`,
+        [rule.window_minutes, workspaceId],
       );
       const metrics = metricResult.rows[0];
       const sampleCount = Number(metrics?.sample_count ?? 0);

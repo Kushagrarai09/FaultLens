@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-faultlens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-faultlens_local_password}
+      POSTGRES_DB: ${POSTGRES_DB:-faultlens}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - faultlens-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - faultlens-ollama:/root/.ollama
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-faultlens}:${POSTGRES_PASSWORD:-faultlens_local_password}@postgres:5432/${POSTGRES_DB:-faultlens}
+      PORT: 3001
+      AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-faultlens-local-secret-7f3d9c2b8a1e6d4f0c5b9a2e7d1f8c6a}
+      OLLAMA_BASE_URL: http://ollama:11434
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+    ports:
+      - "${API_PORT:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    command: ["sh", "-c", "pnpm --filter api db:migrate && pnpm --filter api start:prod"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health/live').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      FAULTLENS_API_URL: http://api:3001
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  faultlens-postgres:
+  faultlens-ollama:

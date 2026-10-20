@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { AccountMenu } from "@/components/account-menu";
 
 type RunStatus = "success" | "failure";
 type AiRun = {
@@ -133,7 +134,6 @@ export default function Home() {
     <aside className="sidebar">
       <Link className="brand" href="/"><span className="brand-mark">F</span><span>fault<span className="brand-light">lens</span></span></Link>
       <div className="section-label">WORKSPACE</div>
-      <div className="workspace"><span className="workspace-avatar">D</span><span><strong>Demo workspace</strong><small>Personal project</small></span><span className="chevron">⌄</span></div>
       <div className="section-label nav-label">OBSERVABILITY</div>
       <nav className="navigation" aria-label="Main navigation">
         <a className="nav-item active" href="#overview"><span className="nav-icon">◫</span>Overview</a>
@@ -144,7 +144,7 @@ export default function Home() {
       </nav>
       <div className="sidebar-bottom">
         <div className="privacy-card"><span className="privacy-icon">⌑</span><strong>Privacy by default</strong><p>Run metadata only. Prompts and responses are not stored in AI run history.</p><p>Prompt templates and evaluation cases are stored for comparison.</p></div>
-        <div className="profile"><span className="user-avatar">K</span><span><strong>Kushagra Rai</strong><small>Local developer</small></span></div>
+        <AccountMenu />
       </div>
     </aside>
 

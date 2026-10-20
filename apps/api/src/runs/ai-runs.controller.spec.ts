@@ -10,6 +10,13 @@ describe('AiRunsController', () => {
     findById: vi.fn(),
   };
   const controller = new AiRunsController(service as unknown as AiRunsService);
+  const user = {
+    userId: 'c2a1f93b-9c72-4e4b-98b4-57d4bc8e30d9',
+    email: 'test@example.test',
+    workspaceId: 'workspace-uuid',
+    workspaceName: 'Test workspace',
+    role: 'owner' as const,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -17,7 +24,7 @@ describe('AiRunsController', () => {
 
   it('validates and forwards a synthetic run to the service', async () => {
     service.create.mockResolvedValue({ id: 'run-id' });
-    const result = await controller.create({
+    const result = await controller.create(user, {
       provider: 'demo',
       model: 'demo-model',
       status: 'success',
@@ -34,12 +41,13 @@ describe('AiRunsController', () => {
         inputTokens: null,
         outputTokens: null,
       }),
+      'workspace-uuid',
     );
     expect(result).toEqual({ id: 'run-id' });
   });
 
   it('rejects invalid run data before calling the service', async () => {
-    expect(() => controller.create({
+    expect(() => controller.create(user, {
       provider: '',
       model: 'demo-model',
       status: 'success',
@@ -51,12 +59,12 @@ describe('AiRunsController', () => {
 
   it('applies default pagination values', async () => {
     service.list.mockResolvedValue({ data: [], pagination: { limit: 20, offset: 0 } });
-    await controller.list();
-    expect(service.list).toHaveBeenCalledWith(20, 0);
+    await controller.list(user);
+    expect(service.list).toHaveBeenCalledWith('workspace-uuid', 20, 0);
   });
 
   it('rejects invalid pagination values', () => {
-    expect(() => controller.list('1000', '0')).toThrow(BadRequestException);
-    expect(() => controller.list('20', '-1')).toThrow(BadRequestException);
+    expect(() => controller.list(user, '1000', '0')).toThrow(BadRequestException);
+    expect(() => controller.list(user, '20', '-1')).toThrow(BadRequestException);
   });
 });
