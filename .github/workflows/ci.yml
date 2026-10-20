@@ -45,3 +45,54 @@ jobs:
 
       - name: Web build
         run: pnpm --filter web build
+<<<<<<< Updated upstream
+=======
+
+  postgres-integration:
+    name: PostgreSQL migration and integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: faultlens
+          POSTGRES_PASSWORD: faultlens_test_password
+          POSTGRES_DB: faultlens_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U faultlens -d faultlens_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://faultlens:faultlens_test_password@localhost:5432/faultlens_test
+      DATABASE_URL: postgresql://faultlens:faultlens_test_password@localhost:5432/faultlens_test
+      OLLAMA_BASE_URL: http://127.0.0.1:1
+      AUTH_TOKEN_SECRET: ci-only-faultlens-integration-secret-at-least-32-chars
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Apply and validate PostgreSQL migrations
+        run: pnpm --filter api db:test:migrate
+
+      - name: Run API PostgreSQL integration tests
+        run: pnpm --filter api test:integration
+
+      - name: Run API HTTP end-to-end tests
+        run: pnpm --filter api test:e2e
+>>>>>>> Stashed changes

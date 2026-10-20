@@ -111,4 +111,82 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 
 ## License
 
+<<<<<<< Updated upstream
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+=======
+```bash
+pnpm --filter api dev
+```
+
+The API defaults to port `3001` through the example configuration. Start Ollama separately and ensure the configured model is available before trying generation or evaluations.
+
+## Verification commands
+
+Run these from the repository root:
+
+```bash
+# Deterministic API unit tests
+pnpm --filter api test
+
+# HTTP API end-to-end tests
+pnpm --filter api test:e2e
+
+# API static analysis
+pnpm --filter api lint
+
+# API production build
+pnpm --filter api build
+
+# Build every workspace package, including the worker and web app
+pnpm build
+```
+
+The HTTP end-to-end suite uses the disposable PostgreSQL database from
+`TEST_DATABASE_URL`. It covers registration/login, bearer authentication,
+workspace isolation, run creation/retrieval/pagination, analytics, mocked
+Ollama success and unavailable-provider behavior, prompt versions, datasets,
+comparisons, alerts, validation errors, sanitized database failures, CORS,
+request-size limits, rate limits, and expired tokens. When
+`TEST_DATABASE_URL` is not set, the suite skips rather than touching a local
+database:
+
+```powershell
+$env:TEST_DATABASE_URL = "postgresql://faultlens:password@localhost:5432/faultlens_test"
+$env:DATABASE_URL = $env:TEST_DATABASE_URL
+$env:AUTH_TOKEN_SECRET = "integration-only-secret-do-not-use-outside-tests-32chars"
+pnpm --filter api db:test:migrate
+pnpm --filter api test:integration
+pnpm --filter api test:e2e
+```
+
+The root commands are also available:
+
+```bash
+pnpm test
+pnpm lint
+pnpm build
+```
+
+The worker currently only logs a startup message; it does not process queued work. Passing builds and unit tests are not evidence of full production readiness. The current end-to-end test does not validate PostgreSQL persistence, Ollama generation, prompt evaluation, analytics, or browser flows.
+
+## Implemented API areas
+
+The NestJS controllers are organized by feature:
+
+- **Runs:** run ingestion, generation, and history.
+- **Analytics:** latency and token usage aggregates. Cost remains unavailable unless pricing is implemented/configured.
+- **Evaluations:** prompt templates and versions, datasets/cases, comparisons, and evaluation history.
+- **Alerts:** threshold rules and manual evaluation.
+
+Inspect the corresponding controller files under `apps/api/src/` for current route definitions and request/response shapes. Routes may change while the project is an MVP.
+
+## Known limitations
+
+- Authentication and workspace-scoped API checks are implemented, but have not yet received a formal security review.
+- SQL migrations are applied with `pnpm --filter api db:migrate`; the API refuses to start against an incomplete schema.
+- Worker is a placeholder.
+- Alert evaluation is not continuous or scheduled.
+- End-to-end and browser integration coverage is incomplete.
+- Token-based estimated cost is not implemented.
+- Do not expose the API publicly until the remaining production controls are implemented and independently verified.
+>>>>>>> Stashed changes
