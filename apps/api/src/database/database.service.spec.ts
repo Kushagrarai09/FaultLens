@@ -61,10 +61,7 @@ describe('DatabaseService', () => {
     poolQuery.mockResolvedValueOnce({ rows: [{ '?column?': 1 }] });
     const service = new DatabaseService();
     await expect(service.healthCheck()).resolves.toBeUndefined();
-    expect(poolQuery).toHaveBeenCalledWith(expect.objectContaining({
-      text: 'SELECT 1',
-      query_timeout: 1_000,
-    }));
+    expect(poolQuery).toHaveBeenCalledWith('SELECT 1');
   });
 
   it('converts connectivity failures into a sanitized service-unavailable error', async () => {

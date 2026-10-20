@@ -33,10 +33,45 @@ export class DatabaseService implements OnModuleDestroy {
     if (!this.pool) {
       throw new ServiceUnavailableException('Database is not configured. Set DATABASE_URL.');
     }
+
     try {
-      await this.pool.query({ text: 'SELECT 1', query_timeout: this.healthTimeoutMs });
+      let timeout: NodeJS.Timeout | undefined;
+      try {
+        await Promise.race([
+          this.pool.query('SELECT 1'),
+          new Promise<never>((_, reject) => {
+            timeout = setTimeout(() => reject(new Error('PostgreSQL health check timed out.')), this.healthTimeoutMs);
+          }),
+        ]);
+      } finally {
+        if (timeout) clearTimeout(timeout);
+      }
     } catch {
       throw new ServiceUnavailableException('PostgreSQL health check failed.');
+    }
+  }
+
+  async assertSchemaReady(): Promise<void> {
+    const requiredTables = [
+      'users', 'workspaces', 'workspace_members', 'ai_runs', 'prompt_templates',
+      'prompt_versions', 'evaluation_datasets', 'evaluation_cases', 'evaluation_runs',
+      'evaluation_results', 'alert_rules',
+    ];
+    try {
+      const result = await this.query<{ table_name: string }>(
+        `SELECT table_name FROM information_schema.tables
+         WHERE table_schema = 'public'
+           AND table_name IN (${requiredTables.map((table) => `'${table}'`).join(', ')})`,
+      );
+      const found = new Set(result.rows.map((row) => row.table_name));
+      const missing = requiredTables.filter((table) => !found.has(table));
+      if (missing.length) {
+        throw new Error(`missing tables: ${missing.join(', ')}`);
+      }
+    } catch {
+      throw new ServiceUnavailableException(
+        'Database schema is not ready. Run "pnpm --filter api db:migrate" and restart the API.',
+      );
     }
   }
 

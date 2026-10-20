@@ -46,23 +46,48 @@ Using the frozen lockfile ensures installation fails instead of silently updatin
 
 ## Prepare PostgreSQL
 
-Create an empty `faultlens` database and apply the SQL migrations **in numeric order**:
+Create an empty `faultlens` database and run the migration runner:
 
 1. `apps/api/migrations/001_create_ai_runs.sql`
 2. `apps/api/migrations/002_create_prompt_evaluations.sql`
 3. `apps/api/migrations/003_create_alert_rules.sql`
 4. `apps/api/migrations/004_create_auth_workspaces.sql`
 
-For example, with PostgreSQL's `psql` client:
+The runner applies migrations in numeric order, records SHA-256 checksums in
+`faultlens_schema_migrations`, refuses to continue if an applied migration was
+edited, takes a PostgreSQL advisory lock, and validates all required tables:
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/001_create_ai_runs.sql
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/002_create_prompt_evaluations.sql
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/003_create_alert_rules.sql
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/004_create_auth_workspaces.sql
+pnpm --filter api db:migrate
 ```
 
-PowerShell can use the same commands if `psql` is installed and `DATABASE_URL` is available as an environment variable. The API currently assumes the schema exists; migrations are not automatically applied on startup. Do not run these against a database containing important data without reviewing the SQL first.
+PowerShell example:
+
+```powershell
+$env:DATABASE_URL = "postgresql://faultlens:password@localhost:5432/faultlens"
+pnpm --filter api db:migrate
+```
+
+The API also checks the required schema before listening and reports the exact
+migration command when tables are missing. Compose runs this migration command
+automatically before starting the API. Review migrations before applying them
+to an existing database.
+
+## Local development seed
+
+After migrations, create a deterministic local account and synthetic data:
+
+```powershell
+$env:NODE_ENV = "development"
+$env:ALLOW_DEVELOPMENT_SEED = "true"
+$env:DEV_SEED_EMAIL = "local@faultlens.test"
+$env:DEV_SEED_PASSWORD = "faultlens-local-password"
+pnpm --filter api db:seed:dev
+```
+
+The seed is idempotent for the configured email/workspace and creates sample
+AI runs, one prompt/version, and a two-case evaluation dataset. It refuses to
+run in production or unless `ALLOW_DEVELOPMENT_SEED=true` is explicitly set.
 
 ## PostgreSQL integration tests
 
@@ -218,7 +243,7 @@ Inspect the corresponding controller files under `apps/api/src/` for current rou
 ## Known limitations
 
 - Authentication and workspace-scoped API checks are implemented, but have not yet received a formal security review.
-- SQL migrations must be applied manually.
+- SQL migrations are applied with `pnpm --filter api db:migrate`; the API refuses to start against an incomplete schema.
 - Worker is a placeholder.
 - Alert evaluation is not continuous or scheduled.
 - End-to-end and browser integration coverage is incomplete.

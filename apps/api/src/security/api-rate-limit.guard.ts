@@ -1,4 +1,4 @@
-import { Injectable, TooManyRequestsException, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 interface WindowEntry {
@@ -48,7 +48,7 @@ export class ApiRateLimitGuard implements CanActivate {
     if (entry.count > bucket.max) {
       const retryAfter = Math.max(1, Math.ceil((entry.start + bucket.windowMs - now) / 1000));
       response.setHeader('Retry-After', String(retryAfter));
-      throw new TooManyRequestsException('Rate limit exceeded. Try again later.');
+      throw new HttpException('Rate limit exceeded. Try again later.', HttpStatus.TOO_MANY_REQUESTS);
     }
 
     response.setHeader('RateLimit-Remaining', String(Math.max(0, bucket.max - entry.count)));

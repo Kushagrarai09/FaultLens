@@ -9,6 +9,7 @@ import { requestBodyErrorMiddleware } from './observability/request-body-error.m
 import { requestTimeoutMiddleware } from './observability/request-timeout.middleware.js';
 import { ApiRateLimitGuard } from './security/api-rate-limit.guard.js';
 import { loadRuntimeConfig } from './config/runtime-config.js';
+import { DatabaseService } from './database/database.service.js';
 
 async function bootstrap() {
   const config = loadRuntimeConfig();
@@ -16,6 +17,12 @@ async function bootstrap() {
     logger: new StructuredLogger(),
     bodyParser: false,
   });
+  try {
+    await app.get(DatabaseService).assertSchemaReady();
+  } catch (error) {
+    await app.close();
+    throw error;
+  }
   const express = app.getHttpAdapter().getInstance();
   const expressModule = await import('express');
 
