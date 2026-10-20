@@ -174,6 +174,13 @@ Key endpoints:
 | GET | `/api/workspaces/members` | Current workspace member |
 | POST | `/api/workspaces/members` | Owner/admin; adds an already registered user by email |
 
+The Next.js web app provides `/login` and `/register`, stores the access token
+in an HTTP-only `faultlens_session` cookie, and forwards that cookie as a bearer
+token through its server-side API proxy routes. The token is not stored in
+`localStorage`. The dashboard loads the current user and available workspaces
+from the API, supports workspace switching, and provides sign out. Invalid or
+expired sessions redirect back to `/login`.
+
 Register a workspace owner:
 
 ```bash

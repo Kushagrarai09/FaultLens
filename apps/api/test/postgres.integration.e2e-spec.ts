@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -79,6 +79,14 @@ describe('FaultLens PostgreSQL and workspace authorization integration', () => {
     await request(app.getHttpServer()).get('/api/runs').expect(401);
     await request(app.getHttpServer()).get('/api/auth/me').expect(401);
     await apiGet('/api/auth/me', 'not-a-valid-token').expect(401);
+    const tokenParts = ownerToken.split('.');
+    const header = tokenParts[0]!;
+    const encodedClaims = tokenParts[1]!;
+    const expiredClaims = { ...JSON.parse(Buffer.from(encodedClaims, 'base64url').toString('utf8')), exp: 1 };
+    const expiredPayload = Buffer.from(JSON.stringify(expiredClaims)).toString('base64url');
+    const unsigned = `${header}.${expiredPayload}`;
+    const expiredToken = `${unsigned}.${createHmac('sha256', process.env.AUTH_TOKEN_SECRET!).update(unsigned).digest('base64url')}`;
+    await apiGet('/api/runs', expiredToken).expect(401);
 
     const created = await createRun().expect(201);
     const viewer = await registerUser('Viewers Own Workspace');
