@@ -10,7 +10,7 @@ services:
     volumes:
       - faultlens-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $\{POSTGRES_USER} -d $\{POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -55,15 +55,6 @@ services:
       FAULTLENS_API_URL: http://api:3001
     ports:
       - "${WEB_PORT:-3000}:3000"
-    depends_on:
-      api:
-        condition: service_healthy
-
-  worker:
-    profiles: ["worker"]
-    build:
-      context: .
-      dockerfile: apps/worker/Dockerfile
     depends_on:
       api:
         condition: service_healthy
