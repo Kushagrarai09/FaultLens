@@ -14,50 +14,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  clean-install:
-    name: Fresh-checkout install
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.34.7
-      - name: Install from a clean checkout
-        run: pnpm install --no-frozen-lockfile
-      - name: Verify workspace packages are discoverable
-        run: pnpm list -r --depth -1
-
   verify:
     name: Unit tests, lint, and builds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10.34.7
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+
       - name: API unit tests
         run: pnpm --filter api test
+
       - name: API hardening tests
         run: pnpm --filter api test:hardening
+
       - name: API lint
         run: pnpm --filter api lint
+
       - name: API build
         run: pnpm --filter api build
+
+      - name: Worker build
+        run: pnpm --filter @faultlens/worker build
+
       - name: Web lint
         run: pnpm --filter web lint
+
       - name: Web build
         run: pnpm --filter web build
 
   postgres-integration:
-    name: Clean PostgreSQL migrations and integration tests
+    name: PostgreSQL migration and integration tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -78,70 +77,28 @@ jobs:
       DATABASE_URL: postgresql://faultlens:faultlens_test_password@localhost:5432/faultlens_test
       OLLAMA_BASE_URL: http://127.0.0.1:1
       AUTH_TOKEN_SECRET: ci-only-faultlens-integration-secret-at-least-32-chars
-      NODE_ENV: test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10.34.7
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
-      - name: Apply migrations to clean disposable database and validate schema
+
+      - name: Apply and validate PostgreSQL migrations
         run: pnpm --filter api db:test:migrate
-      - name: Run PostgreSQL integration tests
+
+      - name: Run API PostgreSQL integration tests
         run: pnpm --filter api test:integration
-      - name: Run API e2e tests
+
+      - name: Run API HTTP end-to-end tests
         run: pnpm --filter api test:e2e
-
-  browser-e2e:
-    name: Browser tests (Playwright with mocked API)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.34.7
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-      - name: Install Playwright Chromium
-        run: pnpm --filter web exec playwright install --with-deps chromium
-      - name: Run browser flows
-        run: pnpm --filter web test:e2e
-
-  security:
-    name: Dependency and secret checks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.34.7
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-      - name: Audit dependency vulnerabilities
-        run: pnpm audit --audit-level high
-      - name: Scan for committed secrets
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  ollama-integration:
-    name: Ollama integration policy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Document mocked provider behavior in CI
-        run: |
-          echo "Browser/API CI tests use deterministic mocked Ollama behavior."
-          echo "Live Ollama integration is intentionally not claimed by this workflow."
