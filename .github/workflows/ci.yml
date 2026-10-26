@@ -57,7 +57,7 @@ jobs:
         run: pnpm --filter web build
 
   postgres-integration:
-    name: Clean PostgreSQL migrations and integration tests
+    name: Clean PostgreSQL migrations, integration and HTTP e2e tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -89,15 +89,15 @@ jobs:
           version: 10.34.7
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
-      - name: Apply migrations to clean disposable database and validate schema
+      - name: Apply test migrations and validate the clean disposable schema
         run: pnpm --filter api db:test:migrate
       - name: Run PostgreSQL integration tests
         run: pnpm --filter api test:integration
-      - name: Run API e2e tests
+      - name: Run API HTTP e2e suite (uses same disposable database)
         run: pnpm --filter api test:e2e
 
   browser-e2e:
-    name: Browser tests (Playwright with mocked API)
+    name: Playwright browser tests (mocked API)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -109,7 +109,7 @@ jobs:
           version: 10.34.7
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
-      - name: Install Playwright Chromium
+      - name: Install Chromium and OS dependencies
         run: pnpm --filter web exec playwright install --with-deps chromium
       - name: Run browser flows
         run: pnpm --filter web test:e2e
@@ -136,12 +136,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  ollama-integration:
-    name: Ollama integration policy
+  ollama-integration-policy:
+    name: Document mocked Ollama behavior
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Document mocked provider behavior in CI
+      - name: Clarify provider verification boundary
         run: |
-          echo "Browser/API CI tests use deterministic mocked Ollama behavior."
-          echo "Live Ollama integration is intentionally not claimed by this workflow."
+          echo "Browser/API CI uses deterministic mocked Ollama behavior."
+          echo "Live Ollama integration is not run by this workflow; verify it manually or add a dedicated model service job."
