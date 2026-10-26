@@ -57,3 +57,18 @@ Set `TEST_DATABASE_URL` to a disposable test database before integration tests; 
 Implemented: AI-run metadata, Ollama generation, token/latency summaries, versioned prompts, evaluation datasets/comparisons, manual threshold alerts, authentication, and workspace-scoped API authorization (subject to tests/security review).
 
 Not implemented or not verified: worker/queue processing, scheduled alerts, notification delivery, incident management, distributed tracing, deployment correlation, automated root-cause analysis, historical failure intelligence, and verified real-cost calculation. Cost stays unknown when verified pricing is missing. There is no production-ready distributed rate limiter, complete audit/secret management, backup/restore and rollback runbook, full CSRF strategy, reverse-proxy/TLS config, or complete tracing. Keep the app private until release checks pass.
+
+
+## Browser test suite
+
+The Playwright suite is maintained in `apps/web/e2e/app.spec.ts` and configured by `apps/web/playwright.config.ts`. It exercises login success/failure, registration, logout, unauthenticated dashboard redirect, dashboard loading, synthetic run creation, analytics, evaluations, alerts, API-unavailable messaging, and workspace switching. These browser tests intercept `/api/**` requests with deterministic test responses; they verify frontend interaction and routing, not the real API/database security boundary.
+
+Run locally on Windows PowerShell:
+
+```powershell
+pnpm install --no-frozen-lockfile
+pnpm --filter web exec playwright install chromium
+pnpm --filter web test:e2e
+```
+
+CI installs Chromium with OS dependencies and runs the browser suite separately from PostgreSQL migration/integration tests. The API e2e test command runs against the disposable PostgreSQL service in CI. Live Ollama is not required for mocked browser/API flows and remains a separately documented manual integration check.
