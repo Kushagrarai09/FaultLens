@@ -114,3 +114,13 @@ test("workspace switcher posts the selected workspace and updates the session", 
   await workspaceSelector.selectOption(workspaceB.id); await expect.poll(() => state.workspaceId).toBe(workspaceB.id);
   await expect(workspaceSelector).toHaveValue(workspaceB.id);
 });
+
+
+test("logout clears the session and returns to login", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /Run health at a glance/ })).toBeVisible();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+});
