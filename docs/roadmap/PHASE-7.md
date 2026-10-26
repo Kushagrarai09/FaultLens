@@ -1,76 +1,86 @@
-# Phase 7 — Release readiness and portfolio demo
+# Phase 7 — Release readiness
 
-## Goal
+## Verdict
 
-Prepare the implemented phases for reproducible verification. This change improves source-level tests and documentation; it does not claim CI, migrations, builds, or browser workflows have passed.
+FaultLens is a **prototype MVP, not production-ready**. TypeScript builds prove compilation, not browser behavior, database persistence, real provider availability, authorization isolation, or deployment safety. Check CI on the integrated branch and perform the remaining runtime checks before release.
 
-## Current implementation
+## Implemented MVP (source-level)
 
-The feature branches contain run ingestion and history, an Ollama generation route, all-time analytics, versioned prompts and datasets, prompt evaluation, and on-demand reliability-rule evaluation. These capabilities remain **unverified until checks pass on an integrated branch**.
+- AI-run metadata ingestion/history and pagination in PostgreSQL.
+- Ollama generation endpoint; raw generation prompt/response are not persisted in AI-run history.
+- Workspace-scoped latency and token analytics.
+- Prompt templates/immutable versions, evaluation datasets/cases, comparison results, and a word-overlap heuristic score (not semantic evaluation).
+- Manual/on-demand threshold alerts for failure rate, P95 latency, and failed-run count.
+- API bearer authentication/role checks/workspace scoping and frontend login/register/logout, HTTP-only session cookie, proxy forwarding, and workspace switching; independently verify these flows.
+- Docker Compose local orchestration, migration checksums/schema checks, guarded local seed data.
+- Playwright browser tests using mocked API routes, with real PostgreSQL integration tests in separate CI jobs.
 
-## CI checks
+## Not implemented or intentionally postponed
 
-Workflow: `.github/workflows/ci.yml`. It runs API tests, API build, web lint, and web build on pull requests and pushes to main. The install step currently uses `pnpm install --no-frozen-lockfile` because the checked-in lockfile has not been regenerated from all current package manifests. Do not switch CI to frozen install until pnpm can regenerate the lockfile and that exact install succeeds from a clean checkout.
+- Background worker/queue processing. The placeholder worker was removed; current generation, evaluation, and alerts are synchronous. Add Redis/BullMQ only with a real job requirement, retry/backoff, dead-letter handling, worker health, graceful shutdown, and integration coverage.
+- Scheduled alerts and external notification delivery.
+- Incident management, deployment/change correlation, distributed tracing, automated root-cause analysis, and historical failure intelligence.
+- Verified real cost calculation. Keep cost `null`/unavailable without verified provider/model prices, currency rules, and sufficient token usage. Unknown is not zero; don't hardcode prices in analytics logic.
+- Production-ready distributed rate limiting, complete audit logging, secret-manager integration, dependency metrics, full request/response tracing, database backup/restore and migration rollback runbooks, complete CSRF strategy, reverse proxy/TLS configuration, production CORS, and container image scanning.
 
-## Local setup checklist (for the integration pass)
+## CI workflow
 
-Requirements: Node.js 22, pnpm 10, PostgreSQL, and Ollama for model generation/evaluation.
+See `.github/workflows/ci.yml`. It includes:
 
-1. Clone the repository and select the integration branch after its stacked PRs are reviewed and integrated in dependency order.
-2. Run `pnpm install`.
-3. Create a PostgreSQL database named `faultlens`.
-4. Set `DATABASE_URL` and `PORT=3001` in the API terminal; set `OLLAMA_BASE_URL=http://localhost:11434` for generation/evaluation.
-5. Apply migrations in order: `001_create_ai_runs.sql`, `002_create_prompt_evaluations.sql`, `003_create_alert_rules.sql`, `004_create_auth_workspaces.sql`.
-6. Optionally run `apps/api/seeds/demo_runs.sql` on a workspace you control, passing `-v workspace_id=<workspace UUID>` to `psql`.
-7. Start Ollama and pull `qwen2.5:3b` (or another model installed locally).
-8. Start API with `pnpm --filter api start:dev`.
-9. In a second terminal set `FAULTLENS_API_URL=http://localhost:3001` and start web with `pnpm --filter web dev`.
-10. Open `http://localhost:3000`.
+- Clean-checkout dependency installation and workspace package discovery.
+- API unit/hardening tests, API lint/build, web lint/build.
+- PostgreSQL 16 disposable service, test-migration checksum/schema checks, integration suite and API e2e command.
+- Playwright browser journeys for login success/failure, registration, logout, unauthenticated dashboard access, dashboard loading/synthetic run creation, analytics, evaluations, alerts, API-unavailable messaging, and workspace switching. API routes are mocked so the browser tests verify UI interactions, not real API authorization/database behavior.
+- Dependency vulnerability audit and committed-secret scanning.
+- An explicit CI policy message that Ollama is mocked/not launched in the regular CI jobs.
 
-PowerShell example for the API terminal:
+CI currently uses `pnpm install --no-frozen-lockfile` because a frozen install has not yet been verified from a clean checkout with the full dependency graph. Regenerate the lockfile and switch to frozen installation only after that clean-install check succeeds.
+
+## Local Windows PowerShell workflow
+
+Requirements: Docker Desktop with Compose, Node.js 22, and pnpm 10.
 
 ```powershell
-$env:DATABASE_URL = "postgresql://postgres:YOUR_LOCAL_PASSWORD@localhost:5432/faultlens"
-$env:PORT = "3001"
-$env:OLLAMA_BASE_URL = "http://localhost:11434"
-pnpm --filter api start:dev
+pnpm install --no-frozen-lockfile
+Copy-Item .env.example .env
+docker compose up --build
 ```
 
-In the web terminal:
+Open the web app at `http://localhost:3000`; the API is at `http://localhost:3001`, PostgreSQL at `localhost:5432`, and Ollama at `http://localhost:11434`. Compose applies migrations before the API starts.
+
+To insert sample data, use a second terminal and only a local disposable database:
 
 ```powershell
-$env:FAULTLENS_API_URL = "http://localhost:3001"
-pnpm --filter web dev
+$env:DATABASE_URL = "postgresql://faultlens:faultlens_local_password@localhost:5432/faultlens"
+$env:NODE_ENV = "development"
+$env:ALLOW_DEVELOPMENT_SEED = "true"
+pnpm db:seed:dev
 ```
 
-## Privacy and security
+Run Playwright locally:
 
-- AI-run generation stores metadata only (provider/model, status, duration, token counts, sanitized error code); raw generation prompts and responses are not saved to `ai_runs`.
-- Prompt templates and evaluation datasets/cases are stored intentionally because they are the artifact being evaluated. Treat them as potentially sensitive and use synthetic data while developing.
-- The Phase 3 branch introduces bearer-token authentication, roles, and workspace-scoped API queries. This is not yet a production security guarantee: it needs CI verification and review; the frontend login flow, rate limiting, account recovery, audit logging, and other abuse protections remain incomplete. Do **not** expose the app or API publicly.
-- Do not commit `.env`, API credentials, database connection strings, or provider secrets.
-- Use a secured, reachable Ollama endpoint for hosted use; `localhost:11434` on a hosted API refers to that service's own container, not your personal computer.
-
-## Demo seed
-
-Optional seed inserts synthetic rows marked `provider='faultlens-demo'`; run only against a local development database. Remove them with:
-
-```sql
-DELETE FROM ai_runs WHERE provider = 'faultlens-demo';
+```powershell
+pnpm --filter web exec playwright install chromium
+pnpm --filter web test:e2e
 ```
 
-## Remaining release verification
+For PostgreSQL tests, set `TEST_DATABASE_URL` to a disposable database with `test`, `testing`, or `integration` in its name. Never point test migration/reset scripts at a development or production database.
 
-- [ ] CI passes on the integrated branch.
-- [ ] `pnpm install --frozen-lockfile` passes after lockfile regeneration.
-- [ ] Apply all four migrations to a clean PostgreSQL database and review migration 004's legacy-data assignment.
-- [ ] Verify run persistence across an API restart.
-- [ ] Verify real Ollama generation, token counts, timeout/unavailable handling.
-- [ ] Verify analytics against hand-calculated fixtures and ensure unknown usage remains unknown.
-- [ ] Verify prompt creation/versioning and fair comparison with the same dataset.
-- [ ] Verify alert rules against controlled sample runs and an empty time window.
-- [ ] Run browser checks on overview, analytics, evaluations, and alerts.
-- [ ] Review dependency security, secret scanning, cross-workspace isolation, RBAC, authentication flows, request limits, and access controls before public deployment.
-- [ ] Record a short walkthrough after the above checks pass.
+## Production hardening checklist
 
-No local runtime or browser testing was performed by the repository-editing connector. Mark every check only after gathering evidence from CI or local execution.
+- [ ] Replace in-memory limits with shared Redis-backed rate limiting before multiple API replicas.
+- [ ] Add security-reviewed audit logging and secret-manager integration.
+- [ ] Add dependency-health metrics and OpenTelemetry/equivalent distributed tracing.
+- [ ] Document and test PostgreSQL backup/restore and migration rollback.
+- [ ] Complete CSRF/session protection review for cookie-based authentication.
+- [ ] Configure trusted reverse-proxy behavior, TLS termination, production CORS, and secure headers.
+- [ ] Run container image scanning and review/fix dependency audit findings.
+- [ ] Implement verified, versioned provider/model prices, currency support, known/missing token rules, and tests—or continue to report cost unavailable.
+- [ ] Perform live Ollama success, failure, and timeout checks separately from mocked CI.
+- [ ] Verify auth expiry, viewer write denial, and cross-workspace isolation on an integrated real API/database environment.
+- [ ] Confirm clean install, all CI jobs, and local Docker startup before exposure.
+- [ ] Complete an independent security review.
+
+## Privacy
+
+Prompt templates and dataset cases are stored intentionally for repeatable evaluation; do not use confidential data without an approved data-handling plan. Generation prompts and outputs are not stored in AI-run history. Never commit `.env`, credentials, tokens, or API keys.

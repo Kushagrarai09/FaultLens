@@ -59,15 +59,6 @@ services:
       api:
         condition: service_healthy
 
-  worker:
-    profiles: ["worker"]
-    build:
-      context: .
-      dockerfile: apps/worker/Dockerfile
-    depends_on:
-      api:
-        condition: service_healthy
-
 volumes:
   faultlens-postgres:
   faultlens-ollama:
