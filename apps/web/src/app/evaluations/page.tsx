@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { AccountMenu } from "@/components/account-menu";
 
 type PromptVersion = { id: string; version: number; template: string; created_at: string };
 type EvalCase = { id: string; input: string; expected_output: string };
@@ -24,6 +25,13 @@ const buttonClass = "rounded-lg bg-violet-400 px-4 py-2.5 text-sm font-semibold 
 const cardClass = "rounded-2xl border border-slate-800 bg-slate-900/70 p-5";
 const format = (value: number | null | undefined) => value == null ? "—" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
 const ms = (value: number | null | undefined) => value == null ? "—" : value >= 1000 ? `${(value / 1000).toFixed(2)} s` : `${Math.round(value)} ms`;
+
+const workflow = [
+  ["1", "Create prompts", "Add prompt templates and versions", "purple"],
+  ["2", "Create dataset", "Add test cases with expected outputs", "blue"],
+  ["3", "Select & compare", "Choose dataset and prompt versions", "green"],
+  ["4", "View results", "Compare score, latency and tokens", "orange"],
+] as const;
 
 export default function EvaluationsPage() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -96,7 +104,7 @@ export default function EvaluationsPage() {
     finally { setBusy(false); }
   }
 
-  async function createDataset(event: React.FormEvent<HTMLFormElement>) {
+  async function createDataset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError("");
     try {
       const cases = caseText.split("\n").map(line => line.trim()).filter(Boolean).map((line, index) => {
@@ -124,59 +132,103 @@ export default function EvaluationsPage() {
     setSelectedVersions(current => current.includes(id) ? current.filter(value => value !== id) : current.length >= 4 ? current : [...current, id]);
   }
 
-  return <main className="min-h-screen bg-slate-950 px-5 py-8 text-slate-100 sm:px-8 lg:px-12">
-    <div className="mx-auto max-w-7xl">
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
-        <div><Link href="/" className="text-sm text-violet-300 hover:text-violet-200">← Back to overview</Link><p className="mt-5 text-xs font-bold uppercase tracking-[0.22em] text-violet-300">FaultLens · Phase 5</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Prompt evaluation</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Create immutable prompt versions, test them against the same examples, and compare a transparent baseline score with latency and token usage.</p></div>
-        <button className={buttonClass} onClick={() => void load()} disabled={loading || busy}>↻ Refresh</button>
-      </header>
+  function promptForVersion(id: string) {
+    return prompts.find(prompt => prompt.versions.some(version => version.id === id));
+  }
 
-      <div className="mb-6 rounded-xl border border-amber-900/70 bg-amber-950/30 p-4 text-sm leading-6 text-amber-100/90"><strong>Evaluation score is a heuristic.</strong> It measures case-insensitive word overlap with your expected output. It is not semantic correctness or factuality. Review outputs yourself. Prompt templates and dataset examples are stored; generated response text is not.</div>
-      {error && <div role="alert" className="mb-6 rounded-xl border border-rose-900 bg-rose-950/40 p-4 text-sm text-rose-200"><strong>Something needs attention</strong><p className="mt-1">{error}</p></div>}
-      {loading ? <div className={cardClass}>Loading prompts and datasets…</div> : <div className="grid gap-6 xl:grid-cols-2">
-        <section className={cardClass}>
-          <h2 className="text-xl font-semibold">1. Create a prompt</h2><p className="mt-2 text-sm text-slate-400">A prompt is created as version 1. Use <code className="text-violet-300">{"{{input}}"}</code> where each test input should be inserted.</p>
-          <form className="mt-5 space-y-4" onSubmit={createPrompt}>
-            <label className="block text-sm text-slate-300">Prompt name<input className={inputClass} value={promptName} onChange={e => setPromptName(e.target.value)} maxLength={120} required /></label>
-            <label className="block text-sm text-slate-300">Ollama model<input className={inputClass} value={model} onChange={e => setModel(e.target.value)} maxLength={160} required /></label>
-            <label className="block text-sm text-slate-300">Prompt template<textarea className={inputClass} rows={4} value={template} onChange={e => setTemplate(e.target.value)} maxLength={12000} required /></label>
-            <button className={buttonClass} disabled={busy}>Save prompt v1</button>
-          </form>
-        </section>
+  return <div className="app-shell">
+    <aside className="sidebar">
+      <Link className="brand" href="/"><span className="brand-mark">F</span><span>fault<span className="brand-light">lens</span></span></Link>
+      <div className="section-label">WORKSPACE</div>
+      <div className="section-label nav-label">OBSERVABILITY</div>
+      <nav className="navigation" aria-label="Main navigation">
+        <Link className="nav-item" href="/"><span className="nav-icon">◫</span>Overview</Link>
+        <Link className="nav-item" href="/runs"><span className="nav-icon">≋</span>AI runs</Link>
+        <Link className="nav-item active" href="/evaluations"><span className="nav-icon">⌁</span>Prompt evaluations<span className="nav-count">NEW</span></Link>
+        <Link className="nav-item" href="/analytics"><span className="nav-icon">◷</span>Cost &amp; performance</Link>
+        <Link className="nav-item" href="/alerts"><span className="nav-icon">⚑</span>Reliability alerts<span className="nav-count">NEW</span></Link>
+      </nav>
+      <div className="sidebar-bottom">
+        <div className="privacy-card"><span className="privacy-icon">⌑</span><strong>Privacy by default</strong><p>Prompt templates and datasets are stored for comparison.</p><p>Generated responses are scored in memory.</p></div>
+        <AccountMenu />
+      </div>
+    </aside>
 
-        <section className={cardClass}>
-          <h2 className="text-xl font-semibold">2. Create a dataset</h2><p className="mt-2 text-sm text-slate-400">One test case per line. Use <code className="text-violet-300">input || expected output</code>. Start with 2–5 short cases.</p>
-          <form className="mt-5 space-y-4" onSubmit={createDataset}>
-            <label className="block text-sm text-slate-300">Dataset name<input className={inputClass} value={datasetName} onChange={e => setDatasetName(e.target.value)} maxLength={120} required /></label>
-            <label className="block text-sm text-slate-300">Description<input className={inputClass} value={datasetDescription} onChange={e => setDatasetDescription(e.target.value)} maxLength={500} /></label>
-            <label className="block text-sm text-slate-300">Test cases<textarea className={inputClass} rows={5} value={caseText} onChange={e => setCaseText(e.target.value)} required /></label>
-            <button className={buttonClass} disabled={busy}>Save dataset</button>
-          </form>
-        </section>
+    <main className="main-panel min-w-0">
+      <div className="content max-w-none">
+        <header className="page-heading items-start">
+          <div>
+            <Link href="/" className="text-xs text-slate-500 hover:text-violet-300">← Back to overview</Link>
+            <div className="eyebrow mt-4"><i />PROMPT QUALITY WORKSPACE</div>
+            <h1>Prompt evaluation<span>.</span></h1>
+            <p>Create prompt versions, test them on the same dataset, and compare results.</p>
+          </div>
+          <div className="heading-actions"><span className="database-pill border-violet-900/60 bg-violet-950/40 text-violet-300">PHASE 5</span><button className="icon-button" aria-label="Refresh evaluations" onClick={() => void load()} disabled={loading || busy}>↻</button></div>
+        </header>
 
-        <section className={`${cardClass} xl:col-span-2`}>
-          <h2 className="text-xl font-semibold">3. Version history</h2><p className="mt-2 text-sm text-slate-400">Versions are immutable. Add a new version rather than overwriting an existing prompt.</p>
-          {prompts.length === 0 ? <p className="mt-4 text-sm text-slate-500">No prompts yet. Create one above.</p> : <div className="mt-5 grid gap-4 lg:grid-cols-2">{prompts.map(prompt => <article key={prompt.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-semibold">{prompt.name}</h3><p className="mt-1 text-xs text-slate-500">{prompt.model}</p></div><span className="text-xs text-slate-500">{prompt.versions.length} version(s)</span></div>
-            <div className="mt-4 space-y-3">{prompt.versions.map(version => <label key={version.id} className="flex cursor-pointer gap-3 rounded-lg border border-slate-800 p-3 hover:border-violet-700"><input type="checkbox" className="mt-1 accent-violet-400" checked={selectedVersions.includes(version.id)} onChange={() => toggleVersion(version.id)} disabled={!selectedVersions.includes(version.id) && selectedVersions.length >= 4} /><span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2 text-sm font-medium">Version {version.version}<span className="text-xs text-slate-500">Compare</span></span><span className="mt-2 block whitespace-pre-wrap break-words text-xs leading-5 text-slate-400">{version.template}</span><span className="mt-2 block break-all text-[10px] text-slate-600">{version.id}</span></span></label>)}</div>
-            <div className="mt-4 border-t border-slate-800 pt-4"><label className="block text-xs text-slate-400">New version template<textarea className={inputClass} rows={3} value={versionTemplates[prompt.id] ?? ""} onChange={e => setVersionTemplates(current => ({ ...current, [prompt.id]: e.target.value }))} placeholder="Write an improved version using {{input}}…" /></label><button className="mt-3 rounded-lg border border-slate-700 px-3 py-2 text-xs hover:border-violet-400 disabled:opacity-50" onClick={() => void createVersion(prompt)} disabled={busy || !(versionTemplates[prompt.id] ?? "").trim()}>+ Add version</button></div>
-          </article>)}</div>}
-        </section>
+        <div className="mb-6 grid gap-3 rounded-lg border border-indigo-900/70 bg-indigo-950/35 p-3 text-xs text-indigo-100 sm:grid-cols-[auto_1fr] sm:items-start">
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-indigo-400 font-bold text-indigo-950">i</span>
+          <p><strong>Evaluation score is a heuristic.</strong><br /><span className="text-indigo-200/75">It measures case-insensitive word overlap with your expected output. It is not semantic correctness or factuality.</span></p>
+        </div>
+        {error && <div role="alert" className="mb-6 rounded-lg border border-rose-900 bg-rose-950/40 p-4 text-sm text-rose-200"><strong>Something needs attention</strong><p className="mt-1">{error}</p></div>}
 
-        <section className={`${cardClass} xl:col-span-2`}>
-          <h2 className="text-xl font-semibold">4. Run a fair comparison</h2><p className="mt-2 text-sm text-slate-400">The same dataset is sent to each selected version&apos;s configured Ollama model, one case at a time. Choose 2–4 versions.</p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"><label className="block text-sm text-slate-300">Evaluation dataset<select className={inputClass} value={datasetId} onChange={e => setDatasetId(e.target.value)}><option value="">Select dataset…</option>{datasets.map(dataset => <option key={dataset.id} value={dataset.id}>{dataset.name} ({dataset.caseCount} cases)</option>)}</select></label><button className={buttonClass} onClick={() => void runComparison()} disabled={busy || !datasetId || selectedVersions.length < 2}>{busy ? "Running evaluation…" : `Run comparison (${selectedVersions.length}/4)`}</button></div>
-          {datasets.length === 0 && <p className="mt-3 text-sm text-amber-300">Create a dataset above before running an evaluation.</p>}
-          {selectedVersions.length < 2 && <p className="mt-3 text-xs text-slate-500">Select at least two prompt versions from the version history.</p>}
-          {evaluation && <div className="mt-7">
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-semibold">Comparison results</h3><p className="mt-1 text-xs text-slate-500">Run ID: {evaluation.id}</p></div><span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-wide">{evaluation.status}</span></div>
-            <p className="mb-4 text-sm text-slate-400">{evaluation.completedCases} successful calls · {evaluation.failedCases} failed calls. {evaluation.scoreMethod}</p>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{evaluation.summary.map(item => <article key={item.promptVersionId} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><p className="text-xs text-violet-300">{item.promptName} · v{item.version}</p><p className="mt-3 text-3xl font-semibold">{item.averageScore === null ? "—" : `${format(item.averageScore)}%`}</p><p className="mt-1 text-xs text-slate-500">Average overlap score</p><div className="mt-4 space-y-2 border-t border-slate-800 pt-3 text-xs text-slate-400"><div className="flex justify-between gap-2"><span>Successful / failed</span><strong>{item.successfulCases} / {item.failedCases}</strong></div><div className="flex justify-between gap-2"><span>Average latency</span><strong>{ms(item.averageLatencyMs)}</strong></div><div className="flex justify-between gap-2"><span>Input tokens</span><strong>{format(item.totalInputTokens)}</strong></div><div className="flex justify-between gap-2"><span>Output tokens</span><strong>{format(item.totalOutputTokens)}</strong></div></div></article>)}</div>
-            <div className="mt-5 overflow-x-auto rounded-xl border border-slate-800"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Prompt version</th><th className="px-4 py-3">Case</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Score</th><th className="px-4 py-3">Latency</th><th className="px-4 py-3">Error</th></tr></thead><tbody>{evaluation.results.map((result, index) => <tr key={`${result.promptVersionId}:${result.caseId}:${index}`} className="border-t border-slate-800 text-slate-300"><td className="px-4 py-3">{result.promptName} v{result.version}</td><td className="px-4 py-3 font-mono text-xs">{result.caseId.slice(0, 8)}</td><td className="px-4 py-3">{result.status}</td><td className="px-4 py-3">{result.score === null ? "—" : `${format(result.score)}%`}</td><td className="px-4 py-3">{ms(result.durationMs)}</td><td className="px-4 py-3 text-xs text-rose-300">{result.errorCode ?? "—"}</td></tr>)}</tbody></table></div>
-          </div>}
-        </section>
-      </div>}
-      <footer className="mt-8 border-t border-slate-800 pt-4 text-xs text-slate-600">FaultLens · Prompt templates and evaluation datasets are stored intentionally. Generated responses are scored in memory and not persisted.</footer>
-    </div>
-  </main>;
+        <div className="mb-5 grid gap-3 md:grid-cols-4" aria-label="Evaluation workflow">
+          {workflow.map(([number, title, description, tone], index) => <div key={number} className="relative flex items-start gap-3 rounded-lg border border-slate-800 bg-slate-900/45 p-3">
+            <span className={`metric-icon ${tone}`}>{number}</span><span><strong className="block text-xs text-slate-200">{title}</strong><small className="mt-1 block text-[10px] leading-4 text-slate-500">{description}</small></span>{index < 3 && <span className="absolute -right-2 top-5 hidden text-slate-600 md:block">›</span>}
+          </div>)}
+        </div>
+
+        {loading ? <div className={cardClass}>Loading prompts and datasets…</div> : <>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <section className="panel" id="create-prompt">
+              <div className="panel-heading"><div><h2><span className="metric-icon purple mr-2 inline-grid align-middle">1</span>Create a prompt</h2><p>Define a prompt template. Use <code className="text-violet-300">{"{{input}}"}</code> where each test input should be inserted.</p></div></div>
+              <form className="mt-5 space-y-4" onSubmit={createPrompt}>
+                <label className="block text-xs text-slate-300">Prompt name<input className={inputClass} placeholder="e.g. Support Assistant — Basic" value={promptName} onChange={e => setPromptName(e.target.value)} maxLength={120} required /></label>
+                <label className="block text-xs text-slate-300">Ollama model<input className={inputClass} value={model} onChange={e => setModel(e.target.value)} maxLength={160} required /></label>
+                <label className="block text-xs text-slate-300">Prompt template<textarea className={`${inputClass} font-mono text-xs leading-5`} rows={4} value={template} onChange={e => setTemplate(e.target.value)} maxLength={12000} required /></label>
+                <div className="flex items-center justify-between gap-3"><span className="text-[10px] text-slate-500">Use {"{{input}}"} for the dataset question.</span><button className={buttonClass} disabled={busy}>▣ Save prompt v1</button></div>
+              </form>
+            </section>
+
+            <section className="panel" id="create-dataset">
+              <div className="panel-heading"><div><h2><span className="metric-icon blue mr-2 inline-grid align-middle">2</span>Create a dataset</h2><p>One test case per line. Use <code className="text-blue-300">input || expected output</code>.</p></div></div>
+              <form className="mt-5 space-y-4" onSubmit={createDataset}>
+                <label className="block text-xs text-slate-300">Dataset name<input className={inputClass} placeholder="e.g. Backend Fundamentals" value={datasetName} onChange={e => setDatasetName(e.target.value)} maxLength={120} required /></label>
+                <label className="block text-xs text-slate-300">Description<input className={inputClass} placeholder="Brief description of this dataset…" value={datasetDescription} onChange={e => setDatasetDescription(e.target.value)} maxLength={500} /></label>
+                <label className="block text-xs text-slate-300">Test cases<textarea className={`${inputClass} font-mono text-xs leading-5`} rows={4} value={caseText} onChange={e => setCaseText(e.target.value)} required /></label>
+                <div className="flex items-center justify-between gap-3"><span className="text-[10px] text-slate-500">One input and expected output per line.</span><button className="rounded-lg bg-blue-400 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-blue-300 disabled:opacity-50" disabled={busy}>▣ Save dataset</button></div>
+              </form>
+            </section>
+          </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+            <section className="panel">
+              <div className="panel-heading"><div><h2><span className="metric-icon green mr-2 inline-grid align-middle">3</span>Prompt version history</h2><p>Versions are immutable. Select 2–4 versions to compare.</p></div><button className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:border-violet-400" onClick={() => document.getElementById("create-prompt")?.scrollIntoView({ behavior: "smooth" })}>＋ New prompt</button></div>
+              {prompts.length === 0 ? <p className="mt-5 rounded-lg border border-dashed border-slate-700 p-5 text-center text-sm text-slate-500">No prompts yet. Create one above.</p> : <div className="mt-5 space-y-3">{prompts.map(prompt => <article key={prompt.id} className="rounded-lg border border-slate-800 bg-slate-950/55">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-3"><div><h3 className="text-sm font-semibold text-slate-200">{prompt.name}</h3><p className="mt-1 text-[10px] text-slate-500">{prompt.model} · {prompt.versions.length} version(s)</p></div><span className="text-slate-500">⌄</span></div>
+                <div className="divide-y divide-slate-800">{prompt.versions.map(version => <label key={version.id} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-slate-900/70"><input type="checkbox" className="mt-1 accent-violet-400" checked={selectedVersions.includes(version.id)} onChange={() => toggleVersion(version.id)} disabled={!selectedVersions.includes(version.id) && selectedVersions.length >= 4} /><span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2 text-xs font-medium text-slate-200"><span><b className="mr-2 rounded bg-slate-800 px-1.5 py-1 text-[10px] text-slate-300">v{version.version}</b>{version.template.replace(/\s+/g, " ").slice(0, 75)}{version.template.length > 75 ? "…" : ""}</span><span className="text-[10px] text-slate-500">Compare</span></span></span></label>)}</div>
+                <div className="border-t border-slate-800 px-4 py-3"><label className="block text-[10px] text-slate-500">New version template<textarea className={`${inputClass} mt-2 text-xs`} rows={2} value={versionTemplates[prompt.id] ?? ""} onChange={e => setVersionTemplates(current => ({ ...current, [prompt.id]: e.target.value }))} placeholder="Write an improved version using {{input}}…" /></label><button className="mt-2 rounded-lg border border-slate-700 px-3 py-2 text-xs hover:border-violet-400 disabled:opacity-50" onClick={() => void createVersion(prompt)} disabled={busy || !(versionTemplates[prompt.id] ?? "").trim()}>＋ Add version</button></div>
+              </article>)}</div>}
+            </section>
+
+            <section className="panel">
+              <div className="panel-heading"><div><h2><span className="metric-icon orange mr-2 inline-grid align-middle">4</span>Run a comparison</h2><p>Send the same cases to each selected model, one at a time.</p></div></div>
+              <label className="mt-5 block text-xs text-slate-300">Evaluation dataset<select className={inputClass} value={datasetId} onChange={e => setDatasetId(e.target.value)}><option value="">Select dataset…</option>{datasets.map(dataset => <option key={dataset.id} value={dataset.id}>{dataset.name} ({dataset.caseCount} cases)</option>)}</select></label>
+              <div className="mt-4 space-y-2"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Selected prompt versions ({selectedVersions.length}/4)</p>{selectedVersions.map(id => { const version = prompts.flatMap(prompt => prompt.versions).find(item => item.id === id); const prompt = promptForVersion(id); return version && prompt ? <div key={id} className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/55 px-3 py-2 text-xs"><span>v{version.version} · {prompt.name}</span><span className="rounded bg-slate-800 px-2 py-1 text-[10px] text-slate-400">{prompt.model}</span></div> : null; })}</div>
+              <button className="mt-5 w-full rounded-lg bg-violet-400 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-violet-300 disabled:opacity-50" onClick={() => void runComparison()} disabled={busy || !datasetId || selectedVersions.length < 2}>{busy ? "Running evaluation…" : `▶ Run comparison (${selectedVersions.length}/4)`}</button>
+              {datasets.length === 0 && <p className="mt-3 text-xs text-amber-300">Create a dataset above before running an evaluation.</p>}
+              {selectedVersions.length < 2 && <p className="mt-3 text-xs text-slate-500">Select at least two prompt versions from the history.</p>}
+            </section>
+          </div>
+
+          {evaluation && <section className="panel mt-4">
+            <div className="panel-heading"><div><h2>Comparison results</h2><p>{evaluation.completedCases} successful calls · {evaluation.failedCases} failed calls · {evaluation.scoreMethod}</p></div><span className="database-pill">{evaluation.status}</span></div>
+            <div className="mt-5 overflow-x-auto rounded-lg border border-slate-800"><table className="w-full min-w-[760px] text-left text-xs"><thead className="bg-slate-950 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">Prompt version</th><th className="px-4 py-3">Model</th><th className="px-4 py-3">Test cases</th><th className="px-4 py-3">Average score</th><th className="px-4 py-3">Success rate</th><th className="px-4 py-3">Avg latency</th><th className="px-4 py-3">Avg tokens</th></tr></thead><tbody>{evaluation.summary.map(item => <tr key={item.promptVersionId} className="border-t border-slate-800 text-slate-300"><td className="px-4 py-3 font-medium">{item.promptName} <span className="text-slate-500">(v{item.version})</span></td><td className="px-4 py-3"><span className="rounded bg-slate-800 px-2 py-1 text-[10px]">{item.model}</span></td><td className="px-4 py-3">{item.totalCases}</td><td className="px-4 py-3 text-emerald-300">{item.averageScore === null ? "—" : `${format(item.averageScore)}%`}</td><td className="px-4 py-3">{item.totalCases ? `${Math.round(item.successfulCases / item.totalCases * 100)}%` : "—"}</td><td className="px-4 py-3">{ms(item.averageLatencyMs)}</td><td className="px-4 py-3">{format(item.totalInputTokens == null && item.totalOutputTokens == null ? null : (item.totalInputTokens ?? 0) + (item.totalOutputTokens ?? 0))}</td></tr>)}</tbody></table></div>
+            <details className="mt-5"><summary className="cursor-pointer text-xs text-slate-400">View individual case results</summary><div className="mt-3 overflow-x-auto rounded-lg border border-slate-800"><table className="w-full min-w-[650px] text-left text-xs"><thead className="bg-slate-950 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">Prompt version</th><th className="px-4 py-3">Case</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Score</th><th className="px-4 py-3">Latency</th><th className="px-4 py-3">Error</th></tr></thead><tbody>{evaluation.results.map((result, index) => <tr key={`${result.promptVersionId}:${result.caseId}:${index}`} className="border-t border-slate-800 text-slate-300"><td className="px-4 py-3">{result.promptName} v{result.version}</td><td className="px-4 py-3 font-mono text-[10px]">{result.caseId.slice(0, 8)}</td><td className="px-4 py-3">{result.status}</td><td className="px-4 py-3">{result.score === null ? "—" : `${format(result.score)}%`}</td><td className="px-4 py-3">{ms(result.durationMs)}</td><td className="px-4 py-3 text-rose-300">{result.errorCode ?? "—"}</td></tr>)}</tbody></table></div></details>
+          </section>}
+        </>}
+        <footer className="mt-8 border-t border-slate-800 pt-4 text-xs text-slate-600">FaultLens · Prompt templates and evaluation datasets are stored intentionally. Generated responses are scored in memory and not persisted.</footer>
+      </div>
+    </main>
+  </div>;
 }

@@ -83,7 +83,14 @@ test("registration creates a session and opens the dashboard", async ({ page }) 
 test("dashboard loads and can create a synthetic run", async ({ page }) => {
   await mockApi(page); await page.goto("/");
   await expect(page.getByRole("heading", { name: /Run health at a glance/ })).toBeVisible();
-  await expect(page.getByText("No AI runs yet")).toBeVisible(); await page.getByRole("button", { name: /Create demo run/ }).click();
+  await expect(page.getByRole("link", { name: /Open AI runs/ })).toBeVisible();
+});
+
+test("AI runs page loads and can create a synthetic run", async ({ page }) => {
+  await mockApi(page); await page.goto("/runs");
+  await expect(page.getByRole("heading", { name: /AI runs/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Create demo run/ }).first()).toBeVisible();
+  await page.getByRole("button", { name: /Create demo run/ }).first().click();
   await expect(page.getByText("demo-chat-model")).toBeVisible();
 });
 
@@ -95,7 +102,8 @@ test("analytics page loads and preserves unknown cost", async ({ page }) => {
 
 test("evaluations page loads", async ({ page }) => {
   await mockApi(page); await page.goto("/evaluations");
-  await expect(page.getByText("1. Create a prompt")).toBeVisible(); await expect(page.getByText("2. Create a dataset")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Create a prompt/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Create a dataset/ })).toBeVisible();
 });
 
 test("alerts page loads", async ({ page }) => {

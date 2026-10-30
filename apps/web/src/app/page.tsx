@@ -13,16 +13,12 @@ type AiRun = {
 type RunsResponse = { data: AiRun[]; pagination: { limit: number; offset: number } };
 const number = (n: number) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
 const duration = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(2)} s` : `${number(n)} ms`;
-const date = (s: string) => new Intl.DateTimeFormat("en", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(s));
 
 export default function Home() {
   const [runs, setRuns] = useState<AiRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState<"all" | RunStatus>("all");
-  const [search, setSearch] = useState("");
-  const [creating, setCreating] = useState(false);
   const [model, setModel] = useState("qwen2.5:3b");
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -51,12 +47,6 @@ export default function Home() {
     const timer = window.setTimeout(() => { void loadRuns(); }, 0);
     return () => window.clearTimeout(timer);
   }, [loadRuns]);
-
-  const visibleRuns = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return runs.filter((r) => (filter === "all" || r.status === filter) &&
-      (!q || [r.provider, r.model, r.id, r.errorCode ?? ""].join(" ").toLowerCase().includes(q)));
-  }, [runs, filter, search]);
 
   const metrics = useMemo(() => {
     const successful = runs.filter((r) => r.status === "success").length;
@@ -103,33 +93,6 @@ export default function Home() {
     }
   }
 
-  async function createDemoRun() {
-    setCreating(true);
-    setError("");
-    const failed = Math.random() < 0.18;
-    try {
-      const response = await fetch("/api/runs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: "demo-provider", model: "demo-chat-model", status: failed ? "failure" : "success",
-          durationMs: Math.floor(180 + Math.random() * 1800),
-          inputTokens: Math.floor(80 + Math.random() * 500),
-          outputTokens: Math.floor(30 + Math.random() * 700),
-          errorCode: failed ? "DEMO_UPSTREAM_TIMEOUT" : null,
-          startedAt: new Date().toISOString(),
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.message ?? "Could not create demo run.");
-      await loadRuns(true);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create demo run.");
-    } finally {
-      setCreating(false);
-    }
-  }
-
   return <main className="app-shell">
     <aside className="sidebar">
       <Link className="brand" href="/"><span className="brand-mark">F</span><span>fault<span className="brand-light">lens</span></span></Link>
@@ -137,7 +100,7 @@ export default function Home() {
       <div className="section-label nav-label">OBSERVABILITY</div>
       <nav className="navigation" aria-label="Main navigation">
         <a className="nav-item active" href="#overview"><span className="nav-icon">◫</span>Overview</a>
-        <a className="nav-item" href="#runs"><span className="nav-icon">≋</span>AI runs<span className="nav-count">{runs.length}</span></a>
+        <Link className="nav-item" href="/runs"><span className="nav-icon">≋</span>AI runs<span className="nav-count">{runs.length}</span></Link>
         <Link className="nav-item" href="/evaluations"><span className="nav-icon">⌁</span>Prompt evaluations<span className="nav-count">NEW</span></Link>
         <Link className="nav-item" href="/analytics"><span className="nav-icon">◷</span>Cost &amp; performance</Link>
         <Link className="nav-item" href="/alerts"><span className="nav-icon">⚑</span>Reliability alerts<span className="nav-count">NEW</span></Link>
@@ -197,43 +160,8 @@ export default function Home() {
           </article>
         </section>
 
-        <section className="panel runs-panel" id="runs">
-          <div className="runs-heading"><div><h2>Recent AI runs</h2><p>Inspect individual requests and their outcomes.</p></div><button className="secondary-button" onClick={() => void loadRuns(true)} disabled={refreshing}><span className={refreshing ? "spin" : ""}>↻</span>Refresh</button></div>
-          <div className="table-toolbar"><label className="search"><span>⌕</span><input aria-label="Search runs" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search provider, model, ID…"/></label>
-            <div className="filters">{(["all", "success", "failure"] as const).map(s => <button key={s} className={filter === s ? "filter active-filter" : "filter"} onClick={() => setFilter(s)}>{s === "all" ? "All runs" : s === "success" ? "Successful" : "Failed"}</button>)}</div>
-          </div>
-          <div className="table-scroll">
-            <table>
-              <thead><tr><th>STATUS</th><th>MODEL / PROVIDER</th><th>DURATION</th><th>TOKENS</th><th>STARTED</th><th>RUN ID</th></tr></thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={6}><div className="table-state"><i className="loader" />Loading run history…</div></td></tr>
-                ) : visibleRuns.length === 0 ? (
-                  <tr>
-                    <td colSpan={6}>
-                      <div className="empty-state">
-                        <span>≋</span><strong>{runs.length ? "No matching runs" : "No AI runs yet"}</strong>
-                        <p>{runs.length ? "Try another search term or status filter." : "Create a demo run to send your first synthetic record through the API."}</p>
-                        {!runs.length && <button className="primary-button" onClick={createDemoRun} disabled={creating}>+ Create demo run</button>}
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  visibleRuns.map((r) => (
-                    <tr key={r.id}>
-                      <td><span className={r.status === "success" ? "badge succeeded" : "badge failed"}><i />{r.status === "success" ? "Success" : "Failed"}</span></td>
-                      <td><div className="model-cell"><span className="model-avatar">{r.provider.slice(0, 1).toUpperCase()}</span><span><strong>{r.model}</strong><small>{r.provider}</small></span></div></td>
-                      <td>{duration(r.durationMs)}</td>
-                      <td><span className="token-cell">{r.inputTokens === null && r.outputTokens === null ? "—" : number((r.inputTokens ?? 0) + (r.outputTokens ?? 0))}</span><small className="sub-cell">{r.inputTokens === null ? "—" : number(r.inputTokens)} in · {r.outputTokens === null ? "—" : number(r.outputTokens)} out</small></td>
-                      <td>{date(r.startedAt)}</td>
-                      <td><span className="run-id" title={r.id}>{r.id.slice(0, 8)}…</span>{r.errorCode && <small className="error-code">{r.errorCode}</small>}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="table-footer"><span>{loading ? "Fetching records…" : `Showing ${visibleRuns.length} of ${runs.length} loaded runs`}</span><span>Newest first <i>·</i> Auto-refresh is off</span></div>
+        <section className="panel mt-4">
+          <div className="panel-heading"><div><h2>Explore AI runs</h2><p>Search, filter, and inspect every recorded request on its dedicated workspace.</p></div><Link className="primary-button" href="/runs">Open AI runs <span>→</span></Link></div>
         </section>
         <footer className="page-footer"><span>© 2026 FaultLens <i>·</i> Built for dependable AI systems</span><span><i/> API-driven dashboard <i>·</i> Phase 2</span></footer>
       </div>

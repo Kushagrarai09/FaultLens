@@ -1,73 +1,342 @@
-# FaultLens
+# FaultLens 🔎
+### Understand, Monitor, and Improve AI Applications
 
-FaultLens is a monorepo MVP for AI-run metadata, Ollama generation, token/latency analytics, prompt versioning and evaluation, and manual threshold-based reliability alerts.
+FaultLens is an AI observability platform. It helps developers understand how their AI models are working, how long they take to respond, how many requests fail, and whether one prompt works better than another.
 
-> **Release status: not production-ready.** Browser checks and CI are being added; PostgreSQL integration must pass on CI; live Ollama behavior and deployment security still need verification.
+**In simple words:** FaultLens is like a health checker for AI applications.
 
-## Implemented MVP (source-level; verify in CI)
-- PostgreSQL-backed AI-run metadata and history.
-- Ollama generation endpoint; generation prompts and responses are not persisted in AI-run history.
-- Per-workspace run, latency, and token analytics.
-- Versioned prompt templates, evaluation datasets, and prompt comparisons. The current comparison score is a simple word-overlap heuristic, not semantic correctness.
-- Manual/on-demand threshold alert rules. Alerts are not scheduled and do not deliver notifications.
-- API bearer-token authentication and workspace-scoped authorization, plus frontend login/register/logout and workspace selection on the integration branch.
-- Local Docker Compose orchestration, migration runner with checksums/schema validation, and opt-in development seed data.
+Just as a doctor checks whether a person is healthy, FaultLens checks whether an AI application is working properly.
 
-## Not implemented / not release-verified
-- Background worker processing, queued evaluations, and scheduled alert checks. The placeholder worker has been removed from the MVP; synchronous API operations remain.
-- Alert notification delivery, incident management, deployment/change correlation, distributed tracing, automated root-cause analysis, or historical failure intelligence.
-- Verified model pricing configuration and real cost calculation. Cost remains unknown (`null`) when no verified price is configured; never infer unknown cost as zero.
-- Production multi-instance rate limiting, complete audit logging, secret-manager integration, backup/restore and rollback runbooks, full CSRF strategy, reverse-proxy/TLS setup, production CORS settings, container image scanning, and complete request/response tracing.
-- Full browser workflows against a real database/provider. The Playwright suite uses mocked API replies to exercise UI behavior; PostgreSQL tests run as a separate CI job, and live Ollama remains an explicit manual integration check.
+---
 
-## Local development (Windows PowerShell)
+## 1. 🤔 Why Do We Need FaultLens?
 
-Requirements: Docker Desktop with Compose, Node.js 22, and pnpm 10.
+Imagine you build a chatbot for a shop.
 
-```powershell
-pnpm install --no-frozen-lockfile
-Copy-Item .env.example .env
-docker compose up --build
+A customer asks, "Where is my order?"
+
+Sometimes the chatbot answers correctly. Sometimes it fails. Sometimes it takes 30 seconds to respond.
+
+Without monitoring, you might not know what went wrong.
+
+### Problems FaultLens helps solve
+
+| Problem | How FaultLens helps |
+|---|---|
+| AI requests fail | Records successful and failed requests |
+| AI responds slowly | Measures response time |
+| You don't know how much the AI uses | Tracks available input and output token counts |
+| You don't know which prompt is better | Compares prompt versions against the same test examples |
+| Failures happen repeatedly | Lets you define reliability rules to detect failure spikes |
+| You need to understand model performance | Shows run history and performance analytics |
+
+**Why is this important?**
+
+An AI application can produce impressive answers during a demo but still fail in real use. Developers need information about its reliability and performance, not just its answers.
+
+---
+
+## 2. 🧒 How Does FaultLens Work?
+
+Think of ordering food from a restaurant.
+
+1. You place an order.
+2. The restaurant prepares your food.
+3. You receive your order.
+4. The restaurant records how long the order took and whether anything went wrong.
+
+FaultLens follows a similar idea, except the order is an AI request.
+
+### Working architecture
+
+```mermaid
+flowchart TD
+    A["User enters a prompt"] --> B["FaultLens Web Dashboard"]
+    B --> C["FaultLens Backend API"]
+    C --> D["AI Model: Ollama"]
+    D --> E["AI generates a response"]
+    E --> F["Response shown to user"]
+    C --> G["Run metadata recorded"]
+    G --> H[("PostgreSQL Database")]
+    H --> I["Analytics Dashboard"]
+    H --> J["Reliability Rule Evaluation"]
+    I --> K["Understand performance"]
+    J --> L["Identify potential problems"]
 ```
 
-Open `http://localhost:3000`. The API is exposed on `http://localhost:3001`, PostgreSQL on port 5432, and Ollama on port 11434. The API container applies migrations before starting. On a second terminal, seed synthetic local-only data with a disposable local database:
+### What does each part do?
 
-```powershell
-$env:DATABASE_URL = "postgresql://faultlens:faultlens_local_password@localhost:5432/faultlens"
-$env:NODE_ENV = "development"
-$env:ALLOW_DEVELOPMENT_SEED = "true"
-pnpm db:seed:dev
+- **Web Dashboard:** The screen where you enter prompts and view results.
+- **Backend API:** Receives requests and coordinates the work.
+- **Ollama:** Runs an AI model locally on your computer.
+- **PostgreSQL:** Stores run metadata and other saved project data.
+- **Analytics:** Summarizes performance information.
+- **Reliability Rules:** Checks recorded metrics against thresholds you configure.
+
+**Why is this architecture important?**
+
+It separates the user interface, AI generation, data storage, and monitoring. This makes the application easier to understand, test, and improve.
+
+---
+
+## 3. ✨ Main Features
+
+### Feature 1: AI Playground
+
+Send a prompt to a local AI model and view its response.
+
+**Example:**
+
+Input:
+
+```text
+Explain what a REST API is in simple words.
 ```
 
-The default seed credentials are for local development only. Change them in any environment that is shared or exposed. Never commit `.env` or real secrets.
+The model generates an answer, and FaultLens records available information about the request, such as its duration, status, and token usage.
 
-## Verification commands
+**Why is this important?**
 
-```powershell
-pnpm --filter api test
-pnpm --filter api test:hardening
-pnpm --filter api build
-pnpm --filter api lint
-pnpm --filter api db:test:migrate
-pnpm --filter api test:integration
-pnpm --filter api test:e2e
-pnpm --filter web lint
-pnpm --filter web build
-pnpm --filter web test:e2e
+You can test an actual model and observe its behavior instead of relying only on mock responses.
+
+### Feature 2: AI Run History
+
+Every recorded AI run represents an individual request.
+
+The run history can show:
+
+- Whether the request succeeded or failed.
+- Which model and provider were used.
+- How long the request took.
+- Available token counts.
+- Error information when a request fails.
+
+**Why is this important?**
+
+When something goes wrong, you can inspect the recorded requests instead of guessing whether the AI model worked.
+
+Note: The current playground does not store raw prompts and responses in run history.
+
+### Feature 3: Usage and Performance Analytics
+
+FaultLens summarizes information from recorded AI requests.
+
+For example:
+
+| Metric | Example |
+|---|---:|
+| Total runs | 100 |
+| Successful runs | 90 |
+| Failed runs | 10 |
+| Success rate | 90% |
+| Average latency | 2 seconds |
+| Known token usage | 25,000 |
+
+These are illustrative numbers, not actual measurements from your project.
+
+**Why is this important?**
+
+Numbers help you identify whether your application is becoming slower or less reliable over time.
+
+### Feature 4: Prompt Evaluation
+
+A prompt is the instruction you give an AI model.
+
+For example:
+
+- Prompt A: "Answer the question."
+- Prompt B: "Answer clearly, give practical steps, and avoid inventing facts."
+
+FaultLens lets you save prompt versions and compare them using the same test dataset.
+
+**Basic workflow:**
+
+1. Create two prompt versions.
+2. Create a dataset containing questions and expected answers.
+3. Select the prompt versions.
+4. Run the comparison.
+5. Review the scores, latency, token usage, and generated answers when available.
+
+**Why is this important?**
+
+You can test whether a change to your instructions improves the results instead of choosing prompts based on guesswork.
+
+The current score is based on case-insensitive word overlap. It does not prove factual correctness or semantic similarity, so review the answers yourself.
+
+### Feature 5: Reliability Alerts
+
+Reliability alerts let you create rules to identify potentially unhealthy AI request patterns.
+
+Examples:
+
+- Failure rate greater than or equal to 10%.
+- P95 latency greater than or equal to 2,500 milliseconds.
+- At least three failed requests within a selected time window.
+
+You create a rule and click **Evaluate enabled rules** to check recorded metadata against it.
+
+**Why is this important?**
+
+A developer may not notice a series of failures by looking at individual requests. Rules make important patterns easier to identify.
+
+**Current limitation:** Evaluation is on demand. Rules do not continuously run or send email, Slack, or other external notifications.
+
+---
+
+## 4. 🔑 Does FaultLens Need an AI API Key?
+
+Not for its current local Ollama workflow.
+
+Ollama runs compatible AI models on your computer, so you do not need a cloud provider API key for that workflow.
+
+```mermaid
+flowchart LR
+    A["FaultLens"] --> B["Ollama"]
+    B --> C["Local AI Model"]
+    C --> D["Generated Answer"]
+    D --> A
 ```
 
-PostgreSQL integration commands require `TEST_DATABASE_URL` pointed only at a disposable database whose name contains `test`, `testing`, or `integration`. The browser Playwright suite starts Next.js locally and mocks API routes, so it does not prove real backend/database/provider integration. CI makes this distinction explicit; check the Actions results before considering a milestone verified.
+You still need to download a model and have enough system resources to run it.
 
-## Architecture decision: no worker in MVP
+For example, your current project has used models such as `qwen2.5:0.5b` and `qwen2.5:3b`.
 
-Generation, evaluation, and alert evaluation remain synchronous request/response operations. The previous worker only printed a startup message and did not process jobs; its package and architecture hooks have been removed. Revisit BullMQ/Redis only when a real asynchronous workload, retries, dead-letter handling, and operational requirements are designed.
+**Why is this important?**
 
-## Cost behavior
+Local AI makes it possible to experiment without paying for cloud API requests. However, response speed and quality depend on your model and computer.
 
-Analytics currently returns an unknown/unavailable cost unless a verified provider/model/token pricing configuration exists. Proper versioned prices, currency handling, missing-usage semantics, and associated tests are future work. A missing price is never treated as a zero cost.
+Support for OpenAI, Gemini, Anthropic, or other hosted AI providers requires separate integrations. Do not assume that any API key can be pasted into the current Ollama playground.
 
-## CI and release readiness
+---
 
-See `.github/workflows/ci.yml` and [Phase 7 release-readiness checklist](docs/roadmap/PHASE-7.md). CI runs fresh-checkout installation, API unit/hardening tests and build/lint, web lint/build, Playwright browser tests with mocked APIs, disposable PostgreSQL migration/integration tests, and dependency/secret checks. The lockfile is not yet verified with a frozen install; CI deliberately uses `pnpm install --no-frozen-lockfile` until lockfile regeneration is committed.
+## 5. 🚀 How to Run FaultLens Locally
 
-No public deployment should be considered safe until the outstanding controls in the Phase 7 checklist are verified.
+### Requirements
+
+Install the following:
+
+- Git
+- Node.js, using a version compatible with the project
+- pnpm
+- Docker Desktop
+- An internet connection for downloading dependencies and images
+
+### Step 1: Open the project
+
+```bash
+git clone https://github.com/Kushagrarai09/FaultLens.git
+cd FaultLens
+```
+
+If you already downloaded the repository, open its folder in VS Code instead.
+
+### Step 2: Configure environment variables
+
+Check the `.env.example` file and the project README. Create or update your `.env` file with the values required by your Docker Compose configuration.
+
+Do not share real passwords, API keys, or other secrets.
+
+### Step 3: Start the application
+
+Make sure Docker Desktop is running, then execute:
+
+```bash
+docker compose up --build -d
+```
+
+This command builds the required images and starts the configured services in the background.
+
+The first build may take time because Docker needs to download images and build the application.
+
+### Step 4: Check the containers
+
+```bash
+docker compose ps
+```
+
+View application logs if something fails:
+
+```bash
+docker compose logs --tail=100
+```
+
+For a particular service, such as the API:
+
+```bash
+docker compose logs --tail=100 api
+```
+
+### Step 5: Open FaultLens
+
+Open the local web address configured by your Compose file. In your current setup, you have been accessing the dashboard at:
+
+http://localhost:3000
+
+### Step 6: Test the application
+
+1. Open the AI Playground.
+2. Select an installed Ollama model.
+3. Enter a prompt and click **Run prompt**.
+4. Inspect the response and run metadata.
+5. Open AI runs and Cost & Performance.
+6. Try Prompt Evaluation with two prompt versions and a dataset.
+7. Create a Reliability Alert rule and evaluate it.
+
+If the model times out or returns an HTTP error, inspect the Ollama container logs and verify that the selected model is installed.
+
+**Why is this important?**
+
+Testing each feature in order helps you distinguish between AI generation problems, database problems, and dashboard problems.
+
+---
+
+## 6. 🔒 What Does FaultLens Store?
+
+FaultLens is designed to store monitoring information without retaining raw prompts and responses in AI run history.
+
+Its current behavior includes:
+
+- Run metadata stored for analytics.
+- Prompt templates and evaluation datasets saved for reuse.
+- Generated responses returned to the browser during playground use.
+- Evaluation response text scored in memory rather than persisted.
+
+Check the implementation before relying on these behaviors for sensitive workloads.
+
+The current MVP also lacks authentication and external alert delivery. Do not expose it publicly until proper access controls and deployment security have been implemented.
+
+**Why is this important?**
+
+Monitoring should help developers understand their applications without accidentally exposing sensitive user data.
+
+---
+
+## 7. 🛠️ What FaultLens Does Not Yet Guarantee
+
+FaultLens is an MVP, not a fully production-ready monitoring platform.
+
+It does not currently guarantee:
+
+- Support for every AI provider.
+- Semantic or factual evaluation of generated answers.
+- Continuous background alert evaluation.
+- Email or Slack notifications.
+- Production-grade authentication and authorization.
+- Automatic diagnosis of every model failure.
+
+These are potential areas for future development, not features you should assume are already implemented.
+
+---
+
+## 8. 🎯 The Main Idea
+
+FaultLens connects three important activities:
+
+1. **Run AI:** Send requests to an AI model and receive answers.
+2. **Observe AI:** Record performance and reliability metadata.
+3. **Improve AI:** Compare prompt versions and inspect potential failures.
+
+The main purpose is simple:
+
+**Don't just build an AI application. Understand how it behaves, measure its performance, identify problems, and improve it using evidence.**
+
